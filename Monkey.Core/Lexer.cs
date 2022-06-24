@@ -1,0 +1,145 @@
+namespace Monkey.Core;
+
+public class Lexer
+{
+    private string _input;
+    private int _position;
+    private int _readPosition;
+    // private char _ch;
+    private byte _ch;
+    public Lexer(string input)
+    {
+        _input = input;
+        ReadChar();
+    }
+
+    public Token NextToken()
+    {
+        Token tok = null;
+
+        SkipWhitespace();
+        
+        switch(_ch)
+        {
+            case (byte) '=':
+                tok = new Token {Type = TokenType.ASSIGN, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) ';':
+                tok = new Token {Type = TokenType.SEMICOLON, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '(':
+                tok = new Token {Type = TokenType.LPAREN, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) ')':
+                tok = new Token {Type = TokenType.RPAREN, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) ',':
+                tok = new Token {Type = TokenType.COMMA, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '+':
+                tok = new Token {Type = TokenType.PLUS, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '{':
+                tok = new Token {Type = TokenType.LBRACE, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '}':
+                tok = new Token {Type = TokenType.RBRACE, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case 0:
+                tok = new Token {Type = TokenType.EOF, Literal = ""};
+                break;
+            default:
+                if (IsLetter(_ch))
+                {
+                    var literal = ReadIdentifier();
+                    tok = new Token {Type = LookupIdent(literal), Literal = literal};
+                    return tok;
+                }
+
+                if (IsDigit(_ch))
+                {
+                    var literal = ReadNumber();
+                    tok = new Token {Type = TokenType.INT, Literal = literal};
+                    return tok;
+                }
+                tok = new Token {Type = TokenType.ILLEGAL, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+        }
+        ReadChar();
+        return tok;
+    }
+
+    private string ReadNumber()
+    {
+        var position = _position;
+        while (IsDigit(_ch))
+        {
+            ReadChar();
+        }
+        
+        return _input.Substring(position, _position-position);
+    }
+
+    private bool IsDigit(byte ch)
+    {
+        var c = Convert.ToChar(ch);
+        return '0' <= ch && ch <= '9';
+    }
+
+    private void SkipWhitespace()
+    {
+        var c = Convert.ToChar(_ch);
+        while (c is ' ' or '\t' or '\r' or '\n')
+        {
+           ReadChar();
+           c = Convert.ToChar(_ch);
+        }
+    }
+
+    private string ReadIdentifier()
+    {
+        var position = _position;
+
+        while (IsLetter(_ch))
+        {
+            ReadChar();
+        }
+
+        return _input.Substring(position, _position-position);
+    }
+
+    private bool IsLetter(byte ch)
+    {
+        var c = Convert.ToChar(ch);
+        var res = c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_';
+        return res;
+    }
+
+    private void ReadChar()
+    {
+        if (_readPosition >= _input.Length)
+        {
+            _ch = 0;
+        }
+        else
+        {
+            _ch = (byte) _input[_readPosition];
+        }
+
+        _position = _readPosition;
+        _readPosition += 1;
+    }
+
+
+    private static Dictionary<string, string> _keywords = new Dictionary<string, string>() { {"fn", TokenType.FUNCTION}, {"let", TokenType.LET} };
+
+    private string LookupIdent(string ident)
+    {
+        if (_keywords.ContainsKey(ident))
+        {
+            return _keywords[ident];
+        }
+
+        return TokenType.IDENT;
+    }
+}
