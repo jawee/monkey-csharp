@@ -4,6 +4,11 @@ public class Token
 {
     public string Type { get; init; }
     public string Literal { get; init; }
+
+    public override string ToString()
+    {
+        return $"{{Type: '{Type}', Literal: '{Literal}'}}";
+    }
 }
 
 public static class TokenType
