@@ -22,7 +22,17 @@ public class Lexer
         switch(_ch)
         {
             case (byte) '=':
-                tok = new Token {Type = TokenType.ASSIGN, Literal = Convert.ToChar(_ch).ToString()};
+                if (PeekChar() == Convert.ToByte('='))
+                {
+                    var ch = _ch;
+                    ReadChar();
+                    var literal = Convert.ToChar(ch) + Convert.ToChar(_ch).ToString();
+                    tok = new Token {Type = TokenType.EQ, Literal = literal};
+                }
+                else
+                {
+                    tok = new Token {Type = TokenType.ASSIGN, Literal = Convert.ToChar(_ch).ToString()};
+                }
                 break;
             case (byte) ';':
                 tok = new Token {Type = TokenType.SEMICOLON, Literal = Convert.ToChar(_ch).ToString()};
@@ -38,6 +48,34 @@ public class Lexer
                 break;
             case (byte) '+':
                 tok = new Token {Type = TokenType.PLUS, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '-':
+                tok = new Token {Type = TokenType.MINUS, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '!':
+                if (PeekChar() == Convert.ToByte('='))
+                {
+                    var ch = _ch;
+                    ReadChar();
+                    var literal = Convert.ToChar(ch) + Convert.ToChar(_ch).ToString();
+                    tok = new Token {Type = TokenType.NOT_EQ, Literal = literal};
+                }
+                else
+                {
+                    tok = new Token {Type = TokenType.BANG, Literal = Convert.ToChar(_ch).ToString()};
+                }
+                break;
+            case (byte) '/':
+                tok = new Token {Type = TokenType.SLASH, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '*':
+                tok = new Token {Type = TokenType.ASTERISK, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '<':
+                tok = new Token {Type = TokenType.LT, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) '>':
+                tok = new Token {Type = TokenType.GT, Literal = Convert.ToChar(_ch).ToString()};
                 break;
             case (byte) '{':
                 tok = new Token {Type = TokenType.LBRACE, Literal = Convert.ToChar(_ch).ToString()};
@@ -131,7 +169,16 @@ public class Lexer
     }
 
 
-    private static Dictionary<string, string> _keywords = new Dictionary<string, string>() { {"fn", TokenType.FUNCTION}, {"let", TokenType.LET} };
+    private static readonly Dictionary<string, string> _keywords = new()
+    {
+        {"fn", TokenType.FUNCTION},
+        {"let", TokenType.LET},
+        {"true", TokenType.TRUE},
+        {"false", TokenType.FALSE},
+        {"if", TokenType.IF},
+        {"else", TokenType.ELSE},
+        {"return", TokenType.RETURN}
+    };
 
     private string LookupIdent(string ident)
     {
@@ -141,5 +188,15 @@ public class Lexer
         }
 
         return TokenType.IDENT;
+    }
+
+    private byte PeekChar()
+    {
+        if (_readPosition >= _input.Length)
+        {
+            return 0;
+        }
+
+        return (byte) _input[_readPosition];
     }
 }

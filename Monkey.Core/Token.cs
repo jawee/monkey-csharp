@@ -15,10 +15,16 @@ public static class TokenType
     public static readonly string IDENT = "IDENT";
     public static readonly string INT = "INT";
     
-    
     // Operators
     public static readonly string ASSIGN = "=";
     public static readonly string PLUS = "+";
+    public static readonly string MINUS = "-";
+    public static readonly string BANG = "!";
+    public static readonly string ASTERISK = "*";
+    public static readonly string SLASH = "/";
+    
+    public static readonly string LT = "<";
+    public static readonly string GT = ">";
     
     // Delimiters
     public static readonly string COMMA = ",";
@@ -32,4 +38,12 @@ public static class TokenType
     // Keywords
     public static readonly string FUNCTION = "FUNCTION";
     public static readonly string LET = "LET";
+    public static readonly string TRUE = "TRUE";
+    public static readonly string FALSE = "FALSE";
+    public static readonly string IF = "IF";
+    public static readonly string ELSE = "ELSE";
+    public static readonly string RETURN = "RETURN";
+
+    public static readonly string EQ = "==";
+    public static readonly string NOT_EQ = "!=";
 }
