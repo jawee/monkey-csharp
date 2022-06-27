@@ -1,6 +1,3 @@
-using System.Security.Principal;
-using Monkey.Core;
-
 namespace Monkey.Test;
 
 public class LexerTest
