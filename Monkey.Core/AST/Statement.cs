@@ -7,6 +7,28 @@ public interface Statement
     public string TokenLiteral();
 }
 
+public class ReturnStatement : Statement
+{
+    public ReturnStatement(Token token)
+    {
+        Token = token;
+    }
+
+    public Node Node { get; set; }
+    public Token Token { get; set; }
+
+    public Expression ReturnValue { get; set; }
+
+    public void StatementNode()
+    {
+    }
+
+    public string TokenLiteral()
+    {
+        return Token.Literal;
+    }
+}
+
 public class LetStatement : Statement
 {
     public LetStatement(Token token)

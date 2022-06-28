@@ -4,6 +4,41 @@ namespace Monkey.Test;
 
 public class ParserTest
 {
+
+    [Test]
+    public void TestReturnStatements()
+    {
+        var input = @"
+        return 5;
+        return 10;
+        return 993322;";
+
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        if (program.Statements.Count != 3)
+        {
+            Assert.Fail($"program.Statements does not contain 3 statements. Got '{program.Statements.Count}'");
+        }
+
+        foreach (var statement in program.Statements)
+        {
+
+            if (statement is not ReturnStatement returnStmt)
+            {
+                Assert.Fail($"s is not a ReturnStatement.");
+                continue;
+            }
+            if (returnStmt.TokenLiteral() != "return")
+            {
+                Assert.Fail($"returnStmt.TokenLiteral not 'return', got '{returnStmt.TokenLiteral()}'");
+            }
+        }
+    }
+
     [Test]
     public void TestLetStatements()
     {

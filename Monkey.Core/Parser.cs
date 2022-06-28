@@ -59,9 +59,25 @@ public class Parser
         {
             case "LET":
                 return ParseLetStatement();
+            case "RETURN":
+                return ParseReturnStatement();
             default:
                 return null;
         }
+    }
+
+    private ReturnStatement ParseReturnStatement()
+    {
+        var statement = new ReturnStatement(_curToken);
+
+        NextToken();
+
+        while (!CurTokenIs(TokenType.SEMICOLON))
+        {
+            NextToken();
+        }
+
+        return statement;
     }
 
     private LetStatement ParseLetStatement()
