@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Monkey.Core.AST;
 
 public class Program
@@ -12,5 +14,17 @@ public class Program
         }
 
         return "";
-    } 
+    }
+
+    public string String()
+    {
+        var builder = new StringBuilder();
+
+        foreach (var statement in Statements)
+        {
+            builder.Append(statement.String());
+        }
+
+        return builder.ToString();
+    }
 }
