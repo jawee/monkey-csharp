@@ -1,5 +1,6 @@
 using System.Globalization;
 using Monkey.Core.AST;
+using Boolean = Monkey.Core.AST.Boolean;
 
 namespace Monkey.Core;
 
@@ -35,7 +36,8 @@ public class Parser
         {TokenType.PLUS, Precedence.SUM},
         {TokenType.MINUS, Precedence.SUM},
         {TokenType.SLASH, Precedence.PRODUCT},
-        {TokenType.ASTERISK, Precedence.PRODUCT}
+        {TokenType.ASTERISK, Precedence.PRODUCT},
+        {TokenType.LPAREN, Precedence.CALL}
     };
 
     public Parser(Lexer lexer)
@@ -49,6 +51,11 @@ public class Parser
         RegisterPrefix(TokenType.INT, ParseIntegerLiteral);
         RegisterPrefix(TokenType.BANG, ParsePrefixExpression);
         RegisterPrefix(TokenType.MINUS, ParsePrefixExpression);
+        RegisterPrefix(TokenType.TRUE, ParseBoolean);
+        RegisterPrefix(TokenType.FALSE, ParseBoolean);
+        RegisterPrefix(TokenType.LPAREN, ParseGroupedExpression);
+        RegisterPrefix(TokenType.IF, ParseIfExpression);
+        RegisterPrefix(TokenType.FUNCTION, ParseFunctionLiteral);
         
         RegisterInfix(TokenType.PLUS, ParseInfixExpression);
         RegisterInfix(TokenType.MINUS, ParseInfixExpression);
@@ -58,9 +65,181 @@ public class Parser
         RegisterInfix(TokenType.NOT_EQ, ParseInfixExpression);
         RegisterInfix(TokenType.LT, ParseInfixExpression);
         RegisterInfix(TokenType.GT, ParseInfixExpression);
+        RegisterInfix(TokenType.LPAREN, ParseCallExpression);
         
         NextToken();
         NextToken();
+    }
+
+    private Expression ParseCallExpression(Expression function)
+    {
+        var exp = new CallExpression {Token = _curToken, Function = function};
+        exp.Arguments = ParseCallArguments();
+
+        return exp;
+    }
+
+    private List<Expression> ParseCallArguments()
+    {
+        var args = new List<Expression>();
+
+        if (PeekTokenIs(TokenType.RPAREN))
+        {
+            NextToken();
+            return args;
+        }
+        
+        NextToken();
+        
+        args.Add(ParseExpression(Precedence.LOWEST));
+
+        while (PeekTokenIs(TokenType.COMMA))
+        {
+            NextToken();
+            NextToken();
+            args.Add(ParseExpression(Precedence.LOWEST));
+        }
+
+        if (!ExpectPeek(TokenType.RPAREN))
+        {
+            return null;
+        }
+
+        return args;
+    }
+
+    private Expression ParseFunctionLiteral()
+    {
+        var lit = new FunctionLiteral {Token = _curToken};
+
+        if (!ExpectPeek(TokenType.LPAREN))
+        {
+            return null;
+        }
+
+        lit.Parameters = ParseFunctionParameters();
+
+        if (!ExpectPeek(TokenType.LBRACE))
+        {
+            return null;
+        }
+
+        lit.Body = ParseBlockStatement();
+
+        return lit;
+    }
+
+    private List<Identifier> ParseFunctionParameters()
+    {
+       var identifiers = new List<Identifier>();
+
+       if (PeekTokenIs(TokenType.RPAREN))
+       {
+           NextToken();
+           return identifiers;
+       }
+       
+       NextToken();
+
+       var ident = new Identifier(_curToken, _curToken.Literal);
+       identifiers.Add(ident);
+
+       while (PeekTokenIs(TokenType.COMMA))
+       {
+           NextToken();
+           NextToken();
+           ident = new Identifier(_curToken, _curToken.Literal);
+           identifiers.Add(ident);
+       }
+
+       if (!ExpectPeek(TokenType.RPAREN))
+       {
+           return null;
+       }
+       
+       return identifiers;
+    }
+
+    private Expression ParseIfExpression()
+    {
+        var expression = new IfExpression
+        {
+            Token = _curToken
+        };
+
+        if (!ExpectPeek(TokenType.LPAREN))
+        {
+            return null;
+        }
+        
+        NextToken();
+        expression.Condition = ParseExpression(Precedence.LOWEST);
+
+        if (!ExpectPeek(TokenType.RPAREN))
+        {
+            return null;
+        }
+
+        if (!ExpectPeek(TokenType.LBRACE))
+        {
+            return null;
+        }
+
+        expression.Consequence = ParseBlockStatement();
+
+        if (PeekTokenIs(TokenType.ELSE))
+        {
+            NextToken();
+
+            if (!ExpectPeek(TokenType.LBRACE))
+            {
+                return null;
+            }
+
+            expression.Alternative = ParseBlockStatement();
+        }
+
+        return expression;
+    }
+
+    private BlockStatement ParseBlockStatement()
+    {
+        var block = new BlockStatement { Token = _curToken };
+        
+        NextToken();
+
+        while (!CurTokenIs(TokenType.RBRACE) && !CurTokenIs(TokenType.EOF))
+        {
+            var stmt = ParseStatement();
+            if (stmt != null)
+            {
+                block.Statements.Add(stmt);
+            }
+            
+            NextToken();
+        }
+
+        return block;
+    }
+
+    private Expression ParseGroupedExpression()
+    {
+        NextToken();
+
+        var exp = ParseExpression(Precedence.LOWEST);
+
+        if (!ExpectPeek(TokenType.RPAREN))
+        {
+            return null;
+        }
+
+        return exp;
+    }
+
+    private Expression ParseBoolean()
+    {
+        var b = new Boolean {Token = _curToken, Value = CurTokenIs(TokenType.TRUE)};
+        return b;
     }
 
     private Expression ParseInfixExpression(Expression left)
@@ -248,6 +427,8 @@ public class Parser
 
         NextToken();
 
+        statement.ReturnValue = ParseExpression(Precedence.LOWEST);
+
         while (!CurTokenIs(TokenType.SEMICOLON))
         {
             NextToken();
@@ -272,7 +453,10 @@ public class Parser
             return null;
         }
         
-        //TODO: We're skipping the expressions until we encounter a semicolon
+        NextToken();
+        
+        stmt.Value = ParseExpression(Precedence.LOWEST);
+        
         while (!CurTokenIs(TokenType.SEMICOLON))
         {
             NextToken();

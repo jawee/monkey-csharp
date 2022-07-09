@@ -1,6 +1,10 @@
 using System.Data;
+using System.Linq.Expressions;
+using System.Reflection;
 using Monkey.Core.AST;
 using NuGet.Frameworks;
+using Boolean = Monkey.Core.AST.Boolean;
+using Expression = Monkey.Core.AST.Expression;
 
 namespace Monkey.Test;
 
@@ -70,6 +74,66 @@ public class ParserTest
             {
                 Input = "3 + 4 * 5 == 3 * 1 + 4 * 5",
                 Expected = "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"
+            },
+            new
+            {
+                Input = "true",
+                Expected = "true"
+            },
+            new
+            {
+                Input = "false",
+                Expected = "false"
+            },
+            new
+            {
+                Input = "3 > 5 == false",
+                Expected = "((3 > 5) == false)"
+            },
+            new
+            {
+                Input = "3 < 5 == true",
+                Expected = "((3 < 5) == true)"
+            },
+            new
+            {
+                Input = "1 + (2 + 3) +4",
+                Expected = "((1 + (2 + 3)) + 4)"
+            },
+            new
+            {
+                Input = "(5 + 5) * 2",
+                Expected = "((5 + 5) * 2)"
+            },
+            new
+            {
+                Input = "2 / (5 + 5)",
+                Expected = "(2 / (5 + 5))"
+            },
+            new
+            {
+                Input = "-(5 + 5)",
+                Expected = "(-(5 + 5))"
+            },
+            new
+            {
+                Input = "!(true == true)",
+                Expected = "(!(true == true))"
+            },
+            new
+            {
+                Input = "a + add(b * c) + d",
+                Expected = "((a + add((b * c))) + d)"
+            },
+            new
+            {
+                Input = "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                Expected = "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))"
+            },
+            new
+            {
+                Input = "add(a + b + c * d / f + g)",
+                Expected = "add((((a + b) + ((c * d) / f)) + g))"
             }
         };
         foreach (var test in tests)
@@ -159,6 +223,58 @@ public class ParserTest
         }
     }
 
+    [Test]
+    public void TestParsingPrefixExpressionsBool()
+    {
+        var prefixTests = new[]
+        {
+            new
+            {
+                Input = "!true;", Operator = "!", Value = true
+            },
+            new
+            {
+                Input = "!false;", Operator = "!", Value = false 
+            }
+        };
+
+        foreach (var test in prefixTests)
+        {
+            var lexer = new Lexer(test.Input);
+            var parser = new Parser(lexer);
+            var program = parser.ParseProgram();
+            CheckParserErrors(parser);
+
+            if (program.Statements.Count != 1)
+            {
+                Assert.Fail($"program.Statements does not contain '1' statements. Got '{program.Statements.Count}'");
+            }
+
+            if (program.Statements[0] is not ExpressionStatement)
+            {
+                Assert.Fail($"program.Statements[0] is not ExpressionStatement, got '{program.Statements[0]}'");
+            }
+
+            var statement = program.Statements[0] as ExpressionStatement;
+
+            if (statement.Expression is not PrefixExpression)
+            {
+                Assert.Fail($"statement.Expression is not PrefixExpression");
+            }
+
+            var expression = statement.Expression as PrefixExpression;
+
+            if (!expression.Operator.Equals(test.Operator))
+            {
+                Assert.Fail($"expression.Operator is not '{test.Operator}'. Got '{expression.Operator}'");
+            }
+
+            if (!TestBooleanLiteral(expression.Right, test.Value))
+            {
+                return;
+            }
+        }
+    }
     [Test]
     public void TestParsingPrefixExpressions()
     {
@@ -318,6 +434,64 @@ public class ParserTest
             Assert.Fail($"ident.TokenLiteral() not '5', got '{ident.TokenLiteral()}'");
         }
     }
+
+    private struct ReturnTestCase
+    {
+        public string Input { get; set; }
+        public object ExpectedValue { get; set; }
+    }
+    [Test]
+    public void TestReturnStatementsNew()
+    {
+        var tests = new List<ReturnTestCase>
+        {
+            new()
+            {
+                Input = "return 5;",
+                ExpectedValue = 5,
+            },
+            new()
+            {
+                Input = "return true;",
+                ExpectedValue = true
+            },
+            new()
+            {
+                Input = "return foobar;",
+                ExpectedValue = "foobar"
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var lexer = new Lexer(test.Input);
+            var parser = new Parser(lexer);
+            var program = parser.ParseProgram();
+            CheckParserErrors(parser);
+            
+            if (program.Statements.Count != 1)
+            {
+                Assert.Fail($"program.Statements does not contain '1' statements. Got '{program.Statements.Count}'");
+            }
+
+            if (program.Statements[0] is not ReturnStatement)
+            {
+                Assert.Fail($"program.Statements[0] is not ReturnStatement. Got '{program.Statements[0]}'");
+            }
+
+            var returnStmt = program.Statements[0] as ReturnStatement;
+
+            if (!returnStmt.TokenLiteral().Equals("return"))
+            {
+                Assert.Fail($"returnStmt.TokenLiteral() not 'return'. Got '{returnStmt.TokenLiteral()}'");
+            }
+
+            if (!TestLiteralExpression(returnStmt.ReturnValue, test.ExpectedValue))
+            {
+                Assert.Fail();
+            }
+        }
+    }
     
     [Test]
     public void TestReturnStatements()
@@ -349,6 +523,65 @@ public class ParserTest
             if (returnStmt.TokenLiteral() != "return")
             {
                 Assert.Fail($"returnStmt.TokenLiteral not 'return', got '{returnStmt.TokenLiteral()}'");
+            }
+        }
+    }
+
+    private struct TestCase
+    {
+        public string Input { get; set; }
+        public string ExpectedIdentifier { get; set; }
+        public object ExpectedValue { get; set; }
+    }
+    [Test]
+    public void TestLetStatementsNew()
+    {
+
+        var tests = new List<TestCase>
+        {
+            new()
+            {
+                Input = "let x = 5;",
+                ExpectedIdentifier = "x",
+                ExpectedValue = 5
+            },
+            new() 
+            {
+                Input = "let y = true;",
+                ExpectedIdentifier = "y",
+                ExpectedValue = true
+            },
+            new() 
+            {
+                Input = "let foobar = y;",
+                ExpectedIdentifier = "foobar",
+                ExpectedValue = "y"
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var lexer = new Lexer(test.Input);
+            var parser = new Parser(lexer);
+            var program = parser.ParseProgram();
+            CheckParserErrors(parser);
+
+            if (program.Statements.Count != 1)
+            {
+                Assert.Fail($"program.Statements does not contain '1' statements. Got '{program.Statements.Count}'");
+            }
+
+            var stmt = program.Statements[0];
+            if (!TestLetStatements(stmt, test.ExpectedIdentifier))
+            {
+                Assert.Fail();
+            }
+
+            var let = stmt as LetStatement;
+
+            if (!TestLiteralExpression(let.Value, test.ExpectedValue))
+            {
+                Assert.Fail();
             }
         }
     }
@@ -440,5 +673,536 @@ public class ParserTest
         }
 
         return true;
+    }
+
+    private bool TestIdentifier(Expression exp, string? value)
+    {
+        if (exp is not Identifier)
+        {
+           Assert.Fail($"exp not 'Identifier'. Got '{exp}'");
+           return false;
+        }
+
+        var ident = exp as Identifier;
+
+        if (!ident.Value.Equals(value))
+        {
+            Assert.Fail($"ident.Value not '{value}'. Got '{ident.TokenLiteral()}'");
+            return false;
+        }
+
+        if (!ident.TokenLiteral().Equals(value))
+        {
+            Assert.Fail($"ident.TokenLiteral not '{value}'. Got '{ident.TokenLiteral()}'");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool TestLiteralExpression<T>(Expression exp, T expected) 
+    {
+        var type = expected?.GetType();
+        if (type == typeof(int))
+        {
+            return TestIntegerLiteral(exp, (int)(object) expected!);
+        }
+
+        if (type == typeof(string))
+        {
+            return TestIdentifier(exp, (string)(object) expected!);
+        }
+
+        if (type == typeof(bool))
+        {
+            return TestBooleanLiteral(exp, (bool) (object) expected);
+        }
+        
+        Assert.Fail($"Type of exp not handled. Got '{exp}'");
+        return false;
+    }
+
+    private bool TestBooleanLiteral(Expression exp, bool value)
+    {
+        if (exp is not Boolean bo)
+        {
+            Assert.Fail($"exp is not Boolean. Got '{exp}'");
+            return false;
+        }
+
+        if (bo.Value != value)
+        {
+            Assert.Fail($"bo.Value not '{value}'. Got '{bo.Value}'");
+            return false;
+        }
+
+        if (!bo.TokenLiteral().Equals(value.ToString().ToLower()))
+        {
+            Assert.Fail($"bo.TokenLiteral not '{value.ToString()}'. Got '{bo.TokenLiteral()}'");
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool TestInfixExpression<T, TY>(Expression exp, T left, string op, TY right)
+    {
+        if (exp is not InfixExpression opExp)
+        {
+            Assert.Fail($"Exp is not 'InfixExpression'. Got '{exp}'");
+            return false;
+        }
+
+        if (!TestLiteralExpression(opExp.Left, left))
+        {
+            return false;
+        }
+
+        if (opExp.Operator != op)
+        {
+            return false;
+        }
+
+        if (!TestLiteralExpression(opExp.Right, right))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    
+    [Test]
+    public void TestParsingInfixExpressionsNew()
+    {
+        var infixTests = new[]
+        {
+            new
+            {
+                Input = "5 + 5;", LeftValue = 5, Operator = "+", RightValue = 5
+            },
+            new
+            {
+                Input = "5 - 5;", LeftValue = 5, Operator = "-", RightValue = 5
+            },
+            new
+            {
+                Input = "5 * 5;", LeftValue = 5, Operator = "*", RightValue = 5
+            },
+            new
+            {
+              Input = "5 / 5;", LeftValue = 5, Operator = "/", RightValue = 5
+            },
+            new
+            {
+                Input = "5 > 5;", LeftValue = 5, Operator = ">", RightValue = 5
+            },
+            new
+            {
+                Input = "5 < 5;", LeftValue = 5, Operator = "<", RightValue = 5
+            },
+            new
+            {
+                Input = "5 == 5;", LeftValue = 5, Operator = "==", RightValue = 5
+            },
+            new
+            {
+                Input = "5 != 5;", LeftValue = 5, Operator = "!=", RightValue = 5
+            }
+        };
+
+        foreach (var test in infixTests)
+        {
+            var lexer = new Lexer(test.Input);
+            var parser = new Parser(lexer);
+            var program = parser.ParseProgram();
+            CheckParserErrors(parser);
+
+            if (program.Statements.Count != 1)
+            {
+                Assert.Fail($"program.Statements does not contain '1' statements. Got '{program.Statements.Count}'");
+            }
+
+            if (program.Statements[0] is not ExpressionStatement)
+            {
+                Assert.Fail($"program.Statements[0] is not ExpressionStatement, got '{program.Statements[0]}'");
+            }
+
+            var statement = program.Statements[0] as ExpressionStatement;
+
+            if (statement.Expression is not InfixExpression)
+            {
+                Assert.Fail($"statement.Expression is not PrefixExpression");
+            }
+
+            var expression = statement.Expression as InfixExpression;
+
+            if (!TestInfixExpression(expression, test.LeftValue, test.Operator, test.RightValue))
+            {
+                return;
+            }
+        }
+
+    }
+    [Test]
+    public void TestParsingInfixExpressionsBool()
+    {
+        var infixTests = new[]
+        {
+            new
+            {
+                Input = "true == true", LeftValue = true, Operator = "==", RightValue = true
+            },
+            new
+            {
+                Input = "true != false", LeftValue = true, Operator = "!=", RightValue = false
+            },
+            new
+            {
+                Input = "false == false", LeftValue = false, Operator = "==", RightValue = false
+            },
+        };
+
+        foreach (var test in infixTests)
+        {
+            var lexer = new Lexer(test.Input);
+            var parser = new Parser(lexer);
+            var program = parser.ParseProgram();
+            CheckParserErrors(parser);
+
+            if (program.Statements.Count != 1)
+            {
+                Assert.Fail($"program.Statements does not contain '1' statements. Got '{program.Statements.Count}'");
+            }
+
+            if (program.Statements[0] is not ExpressionStatement)
+            {
+                Assert.Fail($"program.Statements[0] is not ExpressionStatement, got '{program.Statements[0]}'");
+            }
+
+            var statement = program.Statements[0] as ExpressionStatement;
+
+            if (statement.Expression is not InfixExpression)
+            {
+                Assert.Fail($"statement.Expression is not PrefixExpression");
+            }
+
+            var expression = statement.Expression as InfixExpression;
+
+            if (!TestInfixExpression(expression, test.LeftValue, test.Operator, test.RightValue))
+            {
+                return;
+            }
+        }
+
+    }
+    
+    [Test]
+    public void TestBooleanExpression()
+    {
+        var tests = new[] 
+        {
+            new { Input = "true;", ExpectedBoolean = true },
+            new { Input = "false;", ExpectedBoolean = false }
+        };
+
+        foreach (var test in tests)
+        {
+            var lexer = new Lexer(test.Input);
+            var parser = new Parser(lexer);
+            var program = parser.ParseProgram();
+            CheckParserErrors(parser);
+
+            if (program.Statements.Count != 1)
+            {
+                Assert.Fail($"Program has not enough statements. Got '{program.Statements.Count}'");
+            }
+
+            var statement = program.Statements[0];
+            if (statement is not ExpressionStatement)
+            {
+                Assert.Fail($"program.Statements[0] is not ExpressionStatement");
+            }
+
+            var stmt = statement as ExpressionStatement;
+            
+            if (stmt?.Expression is not Boolean)
+            {
+                Assert.Fail("Expression is not Boolean");
+            }
+
+            var b = stmt?.Expression as Boolean;
+
+            if (b != null && b.Value != test.ExpectedBoolean)
+            {
+                Assert.Fail($"b.Value not '{test.ExpectedBoolean}', got '{b.Value}'");
+            }
+        }
+        
+    }
+
+    [Test]
+    public void TestIfExpression()
+    {
+        var input = @"if (x < y) { x }";
+
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        if (program.Statements.Count != 1)
+        {
+            Assert.Fail($"program.Statements does not contain '{1}' statements. Got '{program.Statements.Count}'");
+        }
+
+        if (program.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"program.Statements[0] is not ExpressionStatement. Got '{program.Statements[0]}'");
+        }
+
+        var stmt = program.Statements[0] as ExpressionStatement;
+
+        if (stmt.Expression is not IfExpression)
+        {
+            Assert.Fail($"stmt.Expression is not IfExpression. Got '{stmt.Expression}'");
+        }
+
+        var exp = stmt.Expression as IfExpression;
+        
+        if (!TestInfixExpression(exp.Condition, "x", "<", "y"))
+        {
+            Assert.Fail();
+        }
+
+        if (exp.Consequence.Statements.Count != 1)
+        {
+            Assert.Fail($"consequence is not '1' statements. Got '{exp.Consequence.Statements.Count}'");
+        }
+
+        if (exp.Consequence.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"Statements[0] is not ExpressionStatement. Got '{exp.Consequence.Statements[0]}'");
+        }
+
+        var consequence = exp.Consequence.Statements[0] as ExpressionStatement;
+
+        if (!TestIdentifier(consequence.Expression, "x"))
+        {
+            Assert.Fail();
+        }
+
+        if (exp.Alternative != null)
+        {
+            Assert.Fail($"exp.Alternative.Statements was not null. Got '{exp.Alternative}'");
+        }
+    }
+    
+    [Test]
+    public void TestIfElseExpression()
+    {
+        var input = @"if (x < y) { x } else { y }";
+
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        if (program.Statements.Count != 1)
+        {
+            Assert.Fail($"program.Statements does not contain '{1}' statements. Got '{program.Statements.Count}'");
+        }
+
+        if (program.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"program.Statements[0] is not ExpressionStatement. Got '{program.Statements[0]}'");
+        }
+
+        var stmt = program.Statements[0] as ExpressionStatement;
+
+        if (stmt.Expression is not IfExpression)
+        {
+            Assert.Fail($"stmt.Expression is not IfExpression. Got '{stmt.Expression}'");
+        }
+
+        var exp = stmt.Expression as IfExpression;
+        
+        if (!TestInfixExpression(exp.Condition, "x", "<", "y"))
+        {
+            Assert.Fail();
+        }
+
+        if (exp.Consequence.Statements.Count != 1)
+        {
+            Assert.Fail($"consequence is not '1' statements. Got '{exp.Consequence.Statements.Count}'");
+        }
+
+        if (exp.Consequence.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"Statements[0] is not ExpressionStatement. Got '{exp.Consequence.Statements[0]}'");
+        }
+
+        var consequence = exp.Consequence.Statements[0] as ExpressionStatement;
+
+        if (!TestIdentifier(consequence.Expression, "x"))
+        {
+            Assert.Fail();
+        }
+
+        if (exp.Alternative.Statements.Count != 1)
+        {
+            Assert.Fail($"exp.Alternative.Statements does not contain '1' statements. Got '{exp.Alternative.Statements.Count}'");
+        }
+
+        if (exp.Alternative.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"Statements[0] is not ExpressionStatement. Got '{exp.Alternative.Statements[0]}");
+        }
+
+        var alternative = exp.Alternative.Statements[0] as ExpressionStatement;
+
+        if (!TestIdentifier(alternative.Expression, "y"))
+        {
+            Assert.Fail();
+        }
+    }
+
+    [Test]
+    public void TestFunctionLiteralParsing()
+    {
+        var input = @"fn(x, y) { x + y; }";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+        
+        if (program.Statements.Count != 1)
+        {
+           Assert.Fail($"program.Statements does not contain '1' statements. Got '{program.Statements.Count}'"); 
+        }
+
+        if (program.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"program.Statements[0] is not ExpressionStatement. Got '{program.Statements[0]}'");
+        }
+
+        var stmt = program.Statements[0] as ExpressionStatement;
+
+        if (stmt.Expression is not FunctionLiteral)
+        {
+            Assert.Fail($"stmt.Expression is not FunctionLiteral. Got '{stmt.Expression}'");
+        }
+
+        var function = stmt.Expression as FunctionLiteral;
+        
+        if (function.Parameters.Count != 2)
+        {
+            Assert.Fail($"function literal parameters wrong. want '2', got '{function.Parameters.Count}'");
+        }
+
+        TestLiteralExpression(function.Parameters[0], "x");
+        TestLiteralExpression(function.Parameters[1], "y");
+
+        if (function.Body.Statements.Count != 1)
+        {
+            Assert.Fail($"function.Body.Statements has not 1 statements. Got '{function.Body.Statements.Count}'");
+        }
+
+        if (function.Body.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"function body stmt is not ExpressionStatement. Got '{function.Body.Statements[0]}'");
+        }
+
+        var bodyStmt = function.Body.Statements[0] as ExpressionStatement;
+
+        TestInfixExpression(bodyStmt.Expression, "x", "+", "y");
+    }
+
+    [Test]
+    public void TestFunctionParameterParsing()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "fn() {};",
+                ExpectedParams = new List<String> { }
+            },
+            new
+            {
+                Input = "fn(x) {};",
+                ExpectedParams = new List<String> {"x"}
+            },
+            new
+            {
+                Input = "fn(x, y, z) {};",
+                ExpectedParams = new List<String> {"x", "y", "z"}
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var lexer = new Lexer(test.Input);
+            var parser = new Parser(lexer);
+            var program = parser.ParseProgram();
+
+            var stmt = program.Statements[0] as ExpressionStatement;
+            var function = stmt.Expression as FunctionLiteral;
+
+            if (function.Parameters.Count != test.ExpectedParams.Count)
+            {
+                Assert.Fail($"Count parameters wrong. Want '{test.ExpectedParams.Count}', Got '{function.Parameters.Count}'");
+            }
+
+            for (var i = 0; i < test.ExpectedParams.Count; i++)
+            {
+                TestLiteralExpression(function.Parameters[i], test.ExpectedParams[i]);
+            }
+
+        }
+    }
+
+    [Test]
+    public void TestCallExpressionParsing()
+    {
+        var input = @"add(1, 2 * 3, 4 + 5);";
+
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        if (program.Statements.Count != 1)
+        {
+            Assert.Fail($"program.Statements does not contain '1' statments. Got '{program.Statements.Count}'");
+        }
+
+        if (program.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"stmt is not ExpressionStatement. Got '{program.Statements[0]}'");
+        }
+
+        var stmt = program.Statements[0] as ExpressionStatement;
+
+        if (stmt.Expression is not CallExpression)
+        {
+            Assert.Fail($"stmt.Expression is not CallExpression. Got '{stmt.Expression}'");
+        }
+
+        var exp = stmt.Expression as CallExpression;
+
+        if (!TestIdentifier(exp.Function, "add"))
+        {
+            Assert.Fail();
+        }
+
+        if (exp.Arguments.Count != 3)
+        {
+            Assert.Fail($"wrong length of arguments. Got '{exp.Arguments.Count}'");
+        }
+
+        TestLiteralExpression(exp.Arguments[0], 1);
+        TestInfixExpression(exp.Arguments[1], 2, "*", 3);
+        TestInfixExpression(exp.Arguments[2], 4, "+", 5);
     }
 }
