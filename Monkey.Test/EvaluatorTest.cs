@@ -1,6 +1,4 @@
-using Monkey.Core.AST;
 using Monkey.Core.Object;
-using NUnit.Framework;
 using Boolean = Monkey.Core.Object.Boolean;
 using Object = Monkey.Core.Object.Object;
 
@@ -9,6 +7,44 @@ namespace Monkey.Test;
 public class EvaluatorTest
 {
 
+    [Test]
+    public void TestReturnStatements()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "return 10;",
+                Expected = 10
+            },
+            new
+            {
+                Input = "return 10; 9;",
+                Expected = 10
+            },
+            new
+            {
+                Input = "return 2 * 5; 9;",
+                Expected = 10
+            },
+            new
+            {
+                Input = "9; return 2 * 5; 9;",
+                Expected = 10
+            },
+            new
+            {
+                Input = @"if (10 > 1) { if (10 > 1) { return 10; } return 1; }",
+                Expected = 10
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            TestIntegerObject(evaluated, test.Expected);
+        }
+    }
     [Test]
     public void TestIfElseExpressions()
     {
@@ -38,6 +74,7 @@ public class EvaluatorTest
 
         foreach (var test in tests)
         {
+            Console.WriteLine($"{test}");
             var evaluated = TestEval(test.Input);
             TestIntegerObject(evaluated, test.Expected);
         }

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Monkey.Core.AST;
 using Monkey.Core.Object;
 using Boolean = Monkey.Core.Object.Boolean;
@@ -11,7 +10,7 @@ public class Evaluator
     {
         if (node is Program prog)
         {
-            return EvalStatements(prog.Statements);
+            return EvalProgram(prog);
         }
 
         if (node is ExpressionStatement estmt)
@@ -34,12 +33,18 @@ public class Evaluator
 
         if (node is BlockStatement bStmt)
         {
-            return EvalStatements(bStmt.Statements);
+            return EvalBlockStatement(bStmt);
         }
 
         if (node is IfExpression ifExpr)
         {
             return EvalIfExpression(ifExpr);
+        }
+
+        if (node is ReturnStatement rStmt)
+        {
+            var val = Eval(rStmt.ReturnValue);
+            return new ReturnValue {Value = val};
         }
         if (node is IntegerLiteral iNode)
         {
@@ -52,6 +57,40 @@ public class Evaluator
         }
 
         return null;
+    }
+
+    private static Object.Object EvalBlockStatement(BlockStatement block)
+    {
+        Object.Object result = null;
+
+        foreach (var statement in block.Statements)
+        {
+            result = Eval(statement);
+
+            if (result != null && result.Type().Equals(ObjectType.RETURN_VALUE_OBJ))
+            {
+                return result as ReturnValue;
+            }
+        }
+
+        return result;
+    }
+
+    private static Object.Object EvalProgram(Program program)
+    {
+        Object.Object result = null;
+
+        foreach (var statement in program.Statements)
+        {
+            result = Eval(statement);
+
+            if (result is ReturnValue rVal)
+            {
+                return rVal.Value;
+            }
+        }
+
+        return result;
     }
 
     private static Object.Object EvalIfExpression(IfExpression ifExpr)
@@ -209,6 +248,11 @@ public class Evaluator
         foreach (var stmt in progStatements)
         {
             result = Eval(stmt);
+
+            if (result is ReturnValue rVal)
+            {
+                return rVal.Value;
+            }
         }
 
         return result;

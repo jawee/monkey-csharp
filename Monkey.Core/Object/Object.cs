@@ -5,6 +5,7 @@ public static class ObjectType
     public static string INTEGER_OBJ = "INTEGER";
     public static string BOOLEAN_OBJ = "BOOLEAN";
     public static string NULL_OBJ = "NULL";
+    public static string RETURN_VALUE_OBJ = "RETURN_VALUE";
 }
 
 public abstract class Object
@@ -14,6 +15,10 @@ public abstract class Object
 
     public static bool operator ==(Object a, Object b)
     {
+        if (a is null || b is null)
+        {
+            return false;
+        }
         if (!a.Type().Equals(b.Type()))
         {
             return false;
@@ -28,6 +33,10 @@ public abstract class Object
 
     public static bool operator !=(Object a, Object b)
     {
+        if (a is null || b is null)
+        {
+            return true;
+        }
         if (!a.Type().Equals(b.Type()))
         {
             return true;
