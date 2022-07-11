@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Monkey.Core.AST;
 using Monkey.Core.Object;
 using Boolean = Monkey.Core.Object.Boolean;
@@ -30,6 +31,16 @@ public class Evaluator
             var right = Eval(iExpr.Right);
             return EvalInfixExpression(iExpr.Operator, left, right);
         }
+
+        if (node is BlockStatement bStmt)
+        {
+            return EvalStatements(bStmt.Statements);
+        }
+
+        if (node is IfExpression ifExpr)
+        {
+            return EvalIfExpression(ifExpr);
+        }
         if (node is IntegerLiteral iNode)
         {
             return new Integer {Value = iNode.Value};
@@ -41,6 +52,38 @@ public class Evaluator
         }
 
         return null;
+    }
+
+    private static Object.Object EvalIfExpression(IfExpression ifExpr)
+    {
+        var condition = Eval(ifExpr.Condition);
+
+        if (IsTruthy(condition))
+        {
+            return Eval(ifExpr.Consequence);
+        }
+        
+        if (ifExpr.Alternative != null)
+        {
+            return Eval(ifExpr.Alternative);
+        }
+        
+        return new Null();
+    }
+
+    private static bool IsTruthy(Object.Object obj)
+    {
+        if (obj is Null)
+        {
+            return false;
+        }
+
+        if (obj is Boolean b)
+        {
+            return b.Value;
+        }
+
+        return true;
     }
 
     private static Object.Object EvalInfixExpression(string op, Object.Object left, Object.Object right)

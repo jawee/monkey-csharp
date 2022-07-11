@@ -8,6 +8,74 @@ namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+
+    [Test]
+    public void TestIfElseExpressions()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "if (true) { 10 }",
+                Expected = 10
+            },
+            new
+            {
+                Input = "if (1) { 10 }",
+                Expected = 10
+            },
+            new
+            {
+                Input = "if (1 > 2) { 10 } else { 20 }",
+                Expected = 20
+            },
+            new
+            {
+                Input = "if (1 < 2) { 10 } else { 20 }",
+                Expected = 10
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            TestIntegerObject(evaluated, test.Expected);
+        }
+    }
+    [Test]
+    public void TestIfElseExpressionsNull()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "if (false) { 10 }"
+            },
+            new
+            {
+                Input = "if (1 > 2) { 10 }"
+            },
+        };
+
+        foreach (var test in tests)
+        {
+            Console.WriteLine($"TestCase: Input = '{test.Input}'.");
+            var evaluated = TestEval(test.Input);
+            TestNullObject(evaluated);
+        }
+    }
+
+    private bool TestNullObject(Object obj)
+    {
+        if (obj != new Null())
+        {
+            Assert.Fail($"obj is not Null. Got '{obj}'");
+            return false;
+        }
+
+        return true;
+    }
+
     [Test]
     public void TestEvalIntegerExpression()
     {
