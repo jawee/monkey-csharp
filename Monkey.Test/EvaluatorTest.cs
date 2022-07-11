@@ -7,6 +7,86 @@ namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+
+    [Test]
+    public void TestClosures()
+    {
+        var input = "let newAdder = fn(x) { fn(y) { x + y; }; }; let addTwo = newAdder(2); addTwo(2);";
+
+        TestIntegerObject(TestEval(input), 4);
+    }
+    [Test]
+    public void TestFunctionApplication()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "let identity = fn(x) { x; }; identity(5);",
+                Expected = 5
+            },
+            new
+            {
+                Input = "let identity = fn(x) { return x; }; identity(5);",
+                Expected = 5
+            },
+            new
+            {
+                Input = "let double = fn(x) { x * 2; }; double(5);",
+                Expected = 10
+            },
+            new
+            {
+                Input = "let add = fn(x, y) { x + y; }; add(5, 5);",
+                Expected = 10
+            },
+            new
+            {
+                Input = "let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));",
+                Expected = 20
+            },
+            new
+            {
+                Input = "fn(x) { x; }(5)",
+                Expected = 5
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            TestIntegerObject(TestEval(test.Input), test.Expected);
+        }
+    }
+    [Test]
+    public void TestFunctionObject()
+    {
+        var input = "fn(x) { x + 2; };";
+
+        var evaluated = TestEval(input);
+        if (evaluated is not Function)
+        {
+            Assert.Fail($"object is not Function. Got '{evaluated}'");
+        }
+
+        var fn = evaluated as Function;
+
+        if (fn.Parameters.Count != 1)
+        {
+           Assert.Fail($"function has wrong parameters. Parameters: '{fn.Parameters}'"); 
+        }
+
+        if (!fn.Parameters[0].String().Equals("x"))
+        {
+            Assert.Fail($"parameter is not 'x', Got '{fn.Parameters[0]}'");
+        }
+
+        var expectedBody = "(x + 2)";
+
+        if (!fn.Body.String().Equals(expectedBody))
+        {
+            Assert.Fail($"body is not '{expectedBody}'. Got '{fn.Body.String()}'");
+        }
+    }
     [Test]
     public void TestLetStatements()
     {

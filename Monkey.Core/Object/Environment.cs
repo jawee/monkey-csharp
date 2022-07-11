@@ -6,11 +6,31 @@ public class Environment
 {
     private Dictionary<String, Object> _store = new Dictionary<string, Object>();
 
+    private Environment _outer;
+    public static Environment NewEnclosedEnvironment(Environment outer)
+    {
+        var env = new Environment
+        {
+            _outer = outer
+        };
+        return env;
+    }
+
     public Object? Get(string name)
     {
         if (!_store.ContainsKey(name))
         {
-            return null;
+            if (_outer == null)
+            {
+                return null;
+            }
+            var outerRes = _outer.Get(name);
+            if (outerRes == null)
+            {
+                return null;
+            }
+
+            return outerRes;
         }
 
         var obj = _store[name];

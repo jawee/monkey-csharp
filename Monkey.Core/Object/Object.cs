@@ -7,6 +7,7 @@ public static class ObjectType
     public static string NULL_OBJ = "NULL";
     public static string RETURN_VALUE_OBJ = "RETURN_VALUE";
     public static string ERROR_OBJ = "ERROR";
+    public static string FUNCTION_OBJ = "FUNCTION";
 }
 
 public abstract class Object

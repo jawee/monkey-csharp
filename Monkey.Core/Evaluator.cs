@@ -86,12 +86,89 @@ public class Evaluator
             env.Set(lStmt.Name.Value, val);
         }
 
+        if (node is FunctionLiteral fn)
+        {
+            var par = fn.Parameters;
+            var body = fn.Body;
+
+            return new Function {Parameters = par, Env = env, Body = body};
+        }
+
+        if (node is CallExpression ce)
+        {
+            var function = Eval(ce.Function, env);
+            if (IsError(function))
+            {
+                return function;
+            }
+
+            var args = EvalExpressions(ce.Arguments, env);
+            if (args.Count == 1 && IsError(args[0]))
+            {
+                return args[0];
+            }
+
+            return ApplyFunction(function, args);
+        }
+
         if (node is Identifier ident)
         {
             return EvalIdentifier(ident, env);
         }
 
         return null;
+    }
+
+    private static Object.Object ApplyFunction(Object.Object function, List<Object.Object> args)
+    {
+        if (function is not Function)
+        {
+            return NewError($"not a function: {function.Type()}");
+        }
+
+        var fn = function as Function;
+        var extendedEnv = ExtendFunctionEnv(fn, args);
+        var evaluated = Eval(fn.Body, extendedEnv);
+        return UnwrapReturnValue(evaluated);
+    }
+
+    private static Object.Object UnwrapReturnValue(Object.Object obj)
+    {
+        if (obj is ReturnValue rv)
+        {
+            return rv.Value;
+        }
+
+        return obj;
+    }
+
+    private static Environment ExtendFunctionEnv(Function function, List<Object.Object> args)
+    {
+        var env = Environment.NewEnclosedEnvironment(function.Env);
+
+        for (var i = 0; i < function.Parameters.Count; i++)
+        {
+            env.Set(function.Parameters[i].Value, args[i]);
+        }
+
+        return env;
+    }
+
+    private static List<Object.Object> EvalExpressions(List<Expression> exps, Environment env)
+    {
+        var result = new List<Object.Object>();
+
+        foreach (var exp in exps)
+        {
+            var evaluated = Eval(exp, env);
+            if (IsError(evaluated))
+            {
+                return new List<Object.Object> {evaluated};
+            }
+            result.Add(evaluated);
+        }
+
+        return result;
     }
 
     private static Object.Object EvalIdentifier(Identifier ident, Environment env)
