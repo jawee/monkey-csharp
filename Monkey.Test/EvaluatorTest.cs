@@ -1,11 +1,46 @@
 using Monkey.Core.Object;
 using Boolean = Monkey.Core.Object.Boolean;
+using Environment = Monkey.Core.Object.Environment;
 using Object = Monkey.Core.Object.Object;
 
 namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+    [Test]
+    public void TestLetStatements()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "let a = 5; a;",
+                Expected = 5
+            },
+            new
+            {
+                Input = "let a = 5 * 5; a;",
+                Expected = 25
+            },
+            new
+            {
+                Input = "let a = 5; let b = a; b;",
+                Expected = 5
+            },
+            new
+            {
+                Input = "let a = 5; let b = a; let c = a + b + 5; c;",
+                Expected = 15
+            }
+        };
+
+
+        foreach (var test in tests)
+        {
+            TestIntegerObject(TestEval(test.Input), test.Expected);
+        }
+    }
+
     [Test]
     public void TestErrorHandling()
     {
@@ -45,6 +80,11 @@ public class EvaluatorTest
             {
                 Input = "if (10 > 1) { if (10 > 1) { return true + false } return 1; }",
                 Expected = "unknown operator: BOOLEAN + BOOLEAN"
+            },
+            new
+            {
+                Input = "foobar",
+                Expected = "identifier not found: foobar"
             }
         };
 
@@ -453,7 +493,8 @@ public class EvaluatorTest
         var lexer = new Lexer(input);
         var parser = new Parser(lexer);
         var program = parser.ParseProgram();
+        var env = new Environment();
 
-        return Evaluator.Eval(program);
+        return Evaluator.Eval(program, env);
     }
 }

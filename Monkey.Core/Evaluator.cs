@@ -1,26 +1,27 @@
 using Monkey.Core.AST;
 using Monkey.Core.Object;
 using Boolean = Monkey.Core.Object.Boolean;
+using Environment = Monkey.Core.Object.Environment;
 
 namespace Monkey.Core;
 
 public class Evaluator
 {
-    public static Object.Object Eval(Node node)
+    public static Object.Object Eval(Node node, Environment env)
     {
         if (node is Program prog)
         {
-            return EvalProgram(prog);
+            return EvalProgram(prog, env);
         }
 
         if (node is ExpressionStatement estmt)
         {
-            return Eval(estmt.Expression);
+            return Eval(estmt.Expression, env);
         }
 
         if (node is PrefixExpression pExpr)
         {
-            var right = Eval(pExpr.Right);
+            var right = Eval(pExpr.Right, env);
             if (IsError(right))
             {
                 return right;
@@ -30,13 +31,13 @@ public class Evaluator
 
         if (node is InfixExpression iExpr)
         {
-            var left = Eval(iExpr.Left);
+            var left = Eval(iExpr.Left, env);
             if (IsError(left))
             {
                 return left;
             }
             
-            var right = Eval(iExpr.Right);
+            var right = Eval(iExpr.Right, env);
             if (IsError(right))
             {
                 return right;
@@ -47,17 +48,17 @@ public class Evaluator
 
         if (node is BlockStatement bStmt)
         {
-            return EvalBlockStatement(bStmt);
+            return EvalBlockStatement(bStmt, env);
         }
 
         if (node is IfExpression ifExpr)
         {
-            return EvalIfExpression(ifExpr);
+            return EvalIfExpression(ifExpr, env);
         }
 
         if (node is ReturnStatement rStmt)
         {
-            var val = Eval(rStmt.ReturnValue);
+            var val = Eval(rStmt.ReturnValue, env);
             if (IsError(val))
             {
                 return val;
@@ -74,7 +75,34 @@ public class Evaluator
             return new Boolean {Value = bNode.Value};
         }
 
+        if (node is LetStatement lStmt)
+        {
+            var val = Eval(lStmt.Value, env);
+            if (IsError(val))
+            {
+                return val;
+            }
+
+            env.Set(lStmt.Name.Value, val);
+        }
+
+        if (node is Identifier ident)
+        {
+            return EvalIdentifier(ident, env);
+        }
+
         return null;
+    }
+
+    private static Object.Object EvalIdentifier(Identifier ident, Environment env)
+    {
+        var val = env.Get(ident.Value);
+        if (val is null)
+        {
+            return NewError($"identifier not found: {ident.Value}");
+        }
+
+        return val;
     }
 
     private static bool IsError(Object.Object obj)
@@ -93,13 +121,13 @@ public class Evaluator
         return new Error {Message = message};
     }
     
-    private static Object.Object EvalBlockStatement(BlockStatement block)
+    private static Object.Object EvalBlockStatement(BlockStatement block, Environment env)
     {
         Object.Object result = null;
 
         foreach (var statement in block.Statements)
         {
-            result = Eval(statement);
+            result = Eval(statement, env);
 
             if (result != null)
             {
@@ -115,13 +143,13 @@ public class Evaluator
         return result;
     }
 
-    private static Object.Object EvalProgram(Program program)
+    private static Object.Object EvalProgram(Program program, Environment env)
     {
         Object.Object result = null;
 
         foreach (var statement in program.Statements)
         {
-            result = Eval(statement);
+            result = Eval(statement, env);
 
             if (result is ReturnValue rVal)
             {
@@ -137,9 +165,9 @@ public class Evaluator
         return result;
     }
 
-    private static Object.Object EvalIfExpression(IfExpression ifExpr)
+    private static Object.Object EvalIfExpression(IfExpression ifExpr, Environment env)
     {
-        var condition = Eval(ifExpr.Condition);
+        var condition = Eval(ifExpr.Condition, env);
         if (IsError(condition))
         {
             return condition;
@@ -147,12 +175,12 @@ public class Evaluator
 
         if (IsTruthy(condition))
         {
-            return Eval(ifExpr.Consequence);
+            return Eval(ifExpr.Consequence, env);
         }
         
         if (ifExpr.Alternative != null)
         {
-            return Eval(ifExpr.Alternative);
+            return Eval(ifExpr.Alternative, env);
         }
         
         return new Null();
@@ -294,13 +322,13 @@ public class Evaluator
         return f;
     }
 
-    private static Object.Object EvalStatements(List<Statement> progStatements)
+    private static Object.Object EvalStatements(List<Statement> progStatements, Environment env)
     {
         Object.Object result = null;
 
         foreach (var stmt in progStatements)
         {
-            result = Eval(stmt);
+            result = Eval(stmt, env);
 
             if (result is ReturnValue rVal)
             {

@@ -1,3 +1,6 @@
+using Monkey.Core.Object;
+using Environment = Monkey.Core.Object.Environment;
+
 namespace Monkey.Core;
 
 public class Repl {
@@ -7,6 +10,8 @@ public class Repl {
     {
         Console.SetIn(input);
         Console.SetOut(output);
+
+        var env = new Environment();
 
         while (true) {
             Console.Write(PROMPT);
@@ -28,7 +33,7 @@ public class Repl {
                 continue;
             }
 
-            var evaluated = Evaluator.Eval(program);
+            var evaluated = Evaluator.Eval(program, env);
             if (evaluated is not null)
             {
                 Console.WriteLine($"{evaluated.Inspect()}");
