@@ -134,7 +134,7 @@ public class ParserTest
             {
                 Input = "add(a + b + c * d / f + g)",
                 Expected = "add((((a + b) + ((c * d) / f)) + g))"
-            }
+            },
         };
         foreach (var test in tests)
         {
@@ -235,7 +235,7 @@ public class ParserTest
             new
             {
                 Input = "!false;", Operator = "!", Value = false 
-            }
+            },
         };
 
         foreach (var test in prefixTests)
@@ -808,7 +808,7 @@ public class ParserTest
             new
             {
                 Input = "5 != 5;", LeftValue = 5, Operator = "!=", RightValue = 5
-            }
+            },
         };
 
         foreach (var test in infixTests)
@@ -903,7 +903,7 @@ public class ParserTest
         var tests = new[] 
         {
             new { Input = "true;", ExpectedBoolean = true },
-            new { Input = "false;", ExpectedBoolean = false }
+            new { Input = "false;", ExpectedBoolean = false },
         };
 
         foreach (var test in tests)

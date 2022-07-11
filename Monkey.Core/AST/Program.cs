@@ -2,7 +2,7 @@ using System.Text;
 
 namespace Monkey.Core.AST;
 
-public class Program
+public class Program : Node
 {
     public List<Statement> Statements { get; set; }
 

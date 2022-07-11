@@ -25,9 +25,14 @@ public class Repl {
             if (parser.Errors().Count != 0)
             {
                 PrintParserErrors(output, parser.Errors());
+                continue;
             }
-            
-            Console.WriteLine(program.String());
+
+            var evaluated = Evaluator.Eval(program);
+            if (evaluated is not null)
+            {
+                Console.WriteLine($"{evaluated.Inspect()}");
+            }
         }
     }
     

@@ -2,7 +2,7 @@ using System.Text;
 
 namespace Monkey.Core.AST;
 
-public interface Statement
+public interface Statement : Node
 {
     public Node Node { get; set; }
     public void StatementNode();
