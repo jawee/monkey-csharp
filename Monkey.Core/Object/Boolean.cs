@@ -29,11 +29,6 @@ public class Boolean : Object
         return Value == (obj as Boolean).Value;
     }
 
-    protected bool Equals(Boolean other)
-    {
-        return Value == other.Value;
-    }
-
     public override int GetHashCode()
     {
         return Value.GetHashCode();

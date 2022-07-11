@@ -6,6 +6,7 @@ public static class ObjectType
     public static string BOOLEAN_OBJ = "BOOLEAN";
     public static string NULL_OBJ = "NULL";
     public static string RETURN_VALUE_OBJ = "RETURN_VALUE";
+    public static string ERROR_OBJ = "ERROR";
 }
 
 public abstract class Object

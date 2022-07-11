@@ -6,7 +6,65 @@ namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+    [Test]
+    public void TestErrorHandling()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "5 + true;",
+                Expected = "type mismatch: INTEGER + BOOLEAN"
+            },
+            new
+            {
+                Input = "5 + true; 5;",
+                Expected = "type mismatch: INTEGER + BOOLEAN"
+            },
+            new
+            {
+                Input = "-true",
+                Expected = "unknown operator: -BOOLEAN"
+            },
+            new
+            {
+                Input = "true + false",
+                Expected = "unknown operator: BOOLEAN + BOOLEAN"
+            },
+            new
+            {
+                Input = "5; true + false; 5",
+                Expected = "unknown operator: BOOLEAN + BOOLEAN"
+            },
+            new
+            {
+                Input = "if (10 > 1) { true + false; }",
+                Expected = "unknown operator: BOOLEAN + BOOLEAN"
+            },
+            new
+            {
+                Input = "if (10 > 1) { if (10 > 1) { return true + false } return 1; }",
+                Expected = "unknown operator: BOOLEAN + BOOLEAN"
+            }
+        };
 
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+
+            if (evaluated is not Error)
+            {
+                Assert.Fail($"no error object returned. Got '{evaluated}'");
+            }
+
+            var errorObj = evaluated as Error;
+
+            if (!errorObj.Message.Equals(test.Expected))
+            {
+                Assert.Fail($"wrong error message. expected '{test.Expected}'. Got '{errorObj.Message}'");
+            }
+        }
+    }
     [Test]
     public void TestReturnStatements()
     {

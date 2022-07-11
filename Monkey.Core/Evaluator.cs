@@ -21,13 +21,27 @@ public class Evaluator
         if (node is PrefixExpression pExpr)
         {
             var right = Eval(pExpr.Right);
+            if (IsError(right))
+            {
+                return right;
+            }
             return EvalPrefixExpression(pExpr.Operator, right);
         }
 
         if (node is InfixExpression iExpr)
         {
             var left = Eval(iExpr.Left);
+            if (IsError(left))
+            {
+                return left;
+            }
+            
             var right = Eval(iExpr.Right);
+            if (IsError(right))
+            {
+                return right;
+            }
+            
             return EvalInfixExpression(iExpr.Operator, left, right);
         }
 
@@ -44,6 +58,10 @@ public class Evaluator
         if (node is ReturnStatement rStmt)
         {
             var val = Eval(rStmt.ReturnValue);
+            if (IsError(val))
+            {
+                return val;
+            }
             return new ReturnValue {Value = val};
         }
         if (node is IntegerLiteral iNode)
@@ -59,6 +77,22 @@ public class Evaluator
         return null;
     }
 
+    private static bool IsError(Object.Object obj)
+    {
+        if (obj != null)
+        {
+            return obj.Type().Equals(ObjectType.ERROR_OBJ);
+        }
+
+        return false;
+    }
+
+
+    private static Error NewError(string message)
+    {
+        return new Error {Message = message};
+    }
+    
     private static Object.Object EvalBlockStatement(BlockStatement block)
     {
         Object.Object result = null;
@@ -67,10 +101,15 @@ public class Evaluator
         {
             result = Eval(statement);
 
-            if (result != null && result.Type().Equals(ObjectType.RETURN_VALUE_OBJ))
+            if (result != null)
             {
-                return result as ReturnValue;
+                
+                if (result.Type().Equals(ObjectType.RETURN_VALUE_OBJ) || result.Type().Equals(ObjectType.ERROR_OBJ))
+                {
+                    return result;
+                }
             }
+
         }
 
         return result;
@@ -88,6 +127,11 @@ public class Evaluator
             {
                 return rVal.Value;
             }
+
+            if (result is Error err)
+            {
+                return err;
+            }
         }
 
         return result;
@@ -96,6 +140,10 @@ public class Evaluator
     private static Object.Object EvalIfExpression(IfExpression ifExpr)
     {
         var condition = Eval(ifExpr.Condition);
+        if (IsError(condition))
+        {
+            return condition;
+        }
 
         if (IsTruthy(condition))
         {
@@ -142,7 +190,12 @@ public class Evaluator
             return NativeBoolToBooleanObject(left != right);
         }
 
-        return new Null();
+        if (!left.Type().Equals(right.Type()))
+        {
+            return NewError($"type mismatch: {left.Type()} {op} {right.Type()}");
+        }
+
+        return NewError($"unknown operator: {left.Type()} {op} {right.Type()}");
     }
 
     private static Object.Object EvalIntegerInfixExpression(string op, Object.Object left, Object.Object right)
@@ -169,7 +222,7 @@ public class Evaluator
             case "!=":
                 return NativeBoolToBooleanObject(leftObj.Value != rightObj.Value);
             default:
-                return new Null();
+                return NewError($"unknown operator: {left.Type()} {op} {right.Type()}");
         }
     }
 
@@ -192,7 +245,7 @@ public class Evaluator
             case "-":
                 return EvalMinusPrefixOperatorExpression(right);
             default:
-                return new Null();
+                return NewError($"unknown operator: {op}{right.Type()}");
         }
     }
 
@@ -200,7 +253,7 @@ public class Evaluator
     {
         if (right.Type() != ObjectType.INTEGER_OBJ)
         {
-            return new Null();
+            return NewError($"unknown operator: -{right.Type()}");
         }
 
         var value = right as Integer;
