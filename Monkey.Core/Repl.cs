@@ -18,14 +18,27 @@ public class Repl {
             }
 
             var lexer = new Lexer(scanned);
+            var parser = new Parser(lexer);
 
-            Token tok = lexer.NextToken();
+            var program = parser.ParseProgram();
 
-            while(tok.Type != TokenType.EOF) 
+            if (parser.Errors().Count != 0)
             {
-                Console.WriteLine($"{tok}");
-                tok = lexer.NextToken();
+                PrintParserErrors(output, parser.Errors());
             }
+            
+            Console.WriteLine(program.String());
+        }
+    }
+    
+    private void PrintParserErrors(TextWriter output, List<string> errors)
+    {
+        Console.SetOut(output);
+        Console.WriteLine("Woops! We ran into some monkey business here!");
+        Console.WriteLine("Parser errors:");
+        foreach (var error in errors)
+        {
+            Console.WriteLine($"\t{error}");
         }
     }
 }
