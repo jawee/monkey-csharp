@@ -17,7 +17,18 @@ public class Evaluator
         {"last", new Builtin { Fn = LastFunc}},
         {"rest", new Builtin { Fn = RestFunc}},
         {"push", new Builtin { Fn = PushFunc}},
+        {"puts", new Builtin { Fn = PutsFunc}}
     };
+
+    private static Object.Object PutsFunc(List<Object.Object> args)
+    {
+        foreach (var arg in args)
+        {
+           Console.WriteLine(arg.Inspect()); 
+        }
+
+        return new Null();
+    }
 
     private static Object.Object PushFunc(List<Object.Object> args)
     {
