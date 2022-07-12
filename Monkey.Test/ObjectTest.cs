@@ -1,11 +1,35 @@
 using Monkey.Core.Object;
 using NUnit.Framework;
 using Boolean = Monkey.Core.Object.Boolean;
+using String = Monkey.Core.Object.String;
 
 namespace Monkey.Test;
 
 public class ObjectTest
 {
+    [Test]
+    public void TestStringHashKey()
+    {
+        var hello1 = new String {Value = "Hello World"};
+        var hello2 = new String {Value = "Hello World"};
+        var diff1 = new String {Value = "My name is johnny"};
+        var diff2 = new String {Value = "My name is johnny"};
+
+        if (hello1.HashKey() != hello2.HashKey())
+        {
+            Assert.Fail($"strings with the same content have different hash keys");
+        }
+
+        if (diff1.HashKey() != diff2.HashKey())
+        {
+            Assert.Fail("strings with same content have different hash keys");
+        }
+
+        if (hello1.HashKey() == diff1.HashKey())
+        {
+            Assert.Fail("strings with different content have same hash keys");
+        }
+    }
 
     [Test]
     public void TestBooleanNotEquals()

@@ -63,6 +63,7 @@ public class LexerTest
         ""foobar""
         ""foo bar""
         [1, 2];
+        {{""foo"": ""bar""}}
         ";
 
         var tests = new[]
@@ -148,6 +149,11 @@ public class LexerTest
             new {ExpectedType = TokenType.INT, ExpectedLiteral = "2"},
             new {ExpectedType = TokenType.RBRACKET, ExpectedLiteral = "]"},
             new {ExpectedType = TokenType.SEMICOLON, ExpectedLiteral = ";"},
+            new {ExpectedType = TokenType.LBRACE, ExpectedLiteral = "{"},
+            new {ExpectedType = TokenType.STRING, ExpectedLiteral = "foo"},
+            new {ExpectedType = TokenType.COLON, ExpectedLiteral = ":"},
+            new {ExpectedType = TokenType.STRING, ExpectedLiteral = "bar"},
+            new {ExpectedType = TokenType.RBRACE, ExpectedLiteral = "}"},
             new {ExpectedType = TokenType.EOF, ExpectedLiteral = ""},
         }.ToList();
 

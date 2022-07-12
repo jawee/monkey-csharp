@@ -1,6 +1,6 @@
 namespace Monkey.Core.Object;
 
-public class Integer : Object
+public class Integer : Object, Hashable
 {
     public int Value { get; set; }
     public override string Type()
@@ -60,5 +60,10 @@ public class Integer : Object
         }
 
         return a.Value != b.Value;
+    }
+
+    public HashKey HashKey()
+    {
+        return new HashKey {Type = Type(), Value = Value};
     }
 }

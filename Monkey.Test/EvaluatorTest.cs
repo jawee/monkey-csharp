@@ -10,6 +10,113 @@ namespace Monkey.Test;
 public class EvaluatorTest
 {
     [Test]
+    public void TestHashIndexExpressionsInt()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = @"{""foo"": 5}[""foo""]",
+                Expected = 5
+            },
+            new
+            {
+                Input = @"let key = ""foo""; {""foo"": 5}[key]",
+                Expected = 5
+            },
+            new
+            {
+                Input = @"{5: 5}[5]",
+                Expected = 5
+            },
+            new
+            {
+                Input = @"{true: 5}[true]",
+                Expected = 5
+            },
+            new 
+            {
+                Input = @"{false: 5}[false]",
+                Expected = 5
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            TestIntegerObject(evaluated, test.Expected);
+        }
+    }
+
+    [Test]
+    public void TestHashIndexExpressionsNull()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = @"{}[""foo""]",
+            },
+            new
+            {
+                Input = @"{""foo"": 5}[""bar""]",
+            },
+        };
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            TestNullObject(evaluated);
+        }
+    }
+    [Test]
+    public void TestHashLiterals()
+    {
+        var input = @"let two = ""two"";
+        {
+            ""one"": 10-9,
+            two: 1 + 1,
+            ""thr"" + ""ee"": 6 / 2,
+            4: 4,
+            true: 5,
+            false: 6
+        }";
+
+        var evaluated = TestEval(input);
+        if (evaluated is not Hash)
+        {
+            Assert.Fail($"Eval didn't return Hash. Got '{evaluated}'");
+        }
+
+        var result = evaluated as Hash;
+
+        var expected = new Dictionary<HashKey, int>
+        {
+            {new String {Value = "one"}.HashKey(), 1},
+            {new String {Value = "two"}.HashKey(), 2},
+            {new String {Value = "three"}.HashKey(), 3},
+            {new Integer {Value = 4}.HashKey(), 4},
+            {new Boolean {Value = true}.HashKey(), 5},
+            {new Boolean {Value = false}.HashKey(), 6}
+        };
+
+        if (result.Pairs.Count != expected.Count)
+        {
+            Assert.Fail($"Hash has wrong num of pairs. Got '{result.Pairs}'");
+        }
+
+        foreach (var (e, v) in expected)
+        {
+            if (!result.Pairs.ContainsKey(e))
+            {
+                Assert.Fail($"result.Pairs does not contain key '{e}'");
+            }
+            var pair = result.Pairs[e];
+
+            TestIntegerObject(pair.Value, v);
+        }
+
+    }
+    [Test]
     public void TestArrayPush()
     {
         var tests = new[]
@@ -449,6 +556,11 @@ public class EvaluatorTest
             {
                 Input = @"""Hello"" - ""World""",
                 Expected = "unknown operator: STRING - STRING"
+            },
+            new
+            {
+                Input = @"{""name"": ""Monkey""}[fn(x) { x }];",
+                Expected = "unusable as hash key: FUNCTION"
             }
         };
 

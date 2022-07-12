@@ -11,6 +11,7 @@ public static class ObjectType
     public static string STRING_OBJ = "STRING";
     public static string BUILTIN_OBJ = "BUILTIN";
     public static string ARRAY_OBJ = "ARRAY";
+    public static string HASH_OBJ = "HASH";
 }
 
 public abstract class Object

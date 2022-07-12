@@ -1,5 +1,4 @@
 using Monkey.Core.AST;
-using NuGet.Frameworks;
 using Boolean = Monkey.Core.AST.Boolean;
 using Expression = Monkey.Core.AST.Expression;
 
@@ -7,6 +6,117 @@ namespace Monkey.Test;
 
 public class ParserTest
 {
+    [Test]
+    public void TestParsingHashLiteralsStringKeys()
+    {
+        var input = @"{""one"": 1, ""two"": 2, ""three"": 3}";
+
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        var stmt = program.Statements[0] as ExpressionStatement;
+        if (stmt.Expression is not HashLiteral)
+        {
+            Assert.Fail($"exp is not HashLiteral. Got '{stmt.Expression}'");
+        }
+
+        var hash = stmt.Expression as HashLiteral;
+
+        if (hash.Pairs.Count != 3)
+        {
+            Assert.Fail($"hash.Pairs has wrong length. Got '{hash.Pairs.Count}");
+        }
+
+        var expected = new Dictionary<string, int>()
+        {
+            {"one", 1},
+            {"two", 2},
+            {"three", 3}
+        };
+
+        foreach (var pair in hash.Pairs)
+        {
+            if (pair.Key is not StringLiteral)
+            {
+                Assert.Fail($"key is not StringLiteral, got '{pair.Key}'");
+            }
+
+            var literal = pair.Key as StringLiteral;
+
+            var expectedValue = expected[literal.String()];
+
+            TestIntegerLiteral(pair.Value, expectedValue);
+        }
+    }
+
+    [Test]
+    public void TestParsingEmptyHashLiteral()
+    {
+        var input = @"{}";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+        
+        var stmt = program.Statements[0] as ExpressionStatement;
+        if (stmt.Expression is not HashLiteral)
+        {
+            Assert.Fail($"exp is not HashLiteral. Got '{stmt.Expression}'");
+        }
+
+        var hash = stmt.Expression as HashLiteral;
+
+        if (hash.Pairs.Count != 0)
+        {
+            Assert.Fail($"hash.Pairs has wrong length. Got '{hash.Pairs.Count}");
+        }
+    }
+
+    [Test]
+    public void TestParsingHashLiteralsWithExpressions()
+    {
+        var input = @"{""one"": 0 + 1, ""two"": 10 - 8, ""three"": 15 / 5}";
+        
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+        
+        var stmt = program.Statements[0] as ExpressionStatement;
+        if (stmt.Expression is not HashLiteral)
+        {
+            Assert.Fail($"exp is not HashLiteral. Got '{stmt.Expression}'");
+        }
+
+        var hash = stmt.Expression as HashLiteral;
+
+        if (hash.Pairs.Count != 3)
+        {
+            Assert.Fail($"hash.Pairs has wrong length. Got '{hash.Pairs.Count}");
+        }
+
+        var tests = new Dictionary<string, Action<Expression>>()
+        {
+            {"one", (e) => { TestInfixExpression(e, 0, "+", 1); }},
+            {"two", (e) => { TestInfixExpression(e, 10, "-", 8); }},
+            {"three", (e) => { TestInfixExpression(e, 15, "/", 5); }}
+        };
+
+        foreach (var pair in hash.Pairs)
+        {
+            if (pair.Key is not StringLiteral)
+            {
+                Assert.Fail($"key is not StringLiteral, got '{pair.Key}'");
+            }
+
+            var literal = pair.Key as StringLiteral;
+            var testFunc = tests[literal.String()];
+
+            testFunc(pair.Value);
+        }
+    }
     [Test]
     public void TestParsingIndexExpressions()
     {

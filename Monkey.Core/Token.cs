@@ -35,6 +35,7 @@ public static class TokenType
     // Delimiters
     public static readonly string COMMA = ",";
     public static readonly string SEMICOLON = ";";
+    public static readonly string COLON = ":";
     
     public static readonly string LPAREN = "(";
     public static readonly string RPAREN = ")";

@@ -167,6 +167,11 @@ public class Evaluator
             return EvalInfixExpression(iExpr.Operator, left, right);
         }
 
+        if (node is HashLiteral hl)
+        {
+            return EvalHashLiteral(hl, env);
+        }
+
         if (node is BlockStatement bStmt)
         {
             return EvalBlockStatement(bStmt, env);
@@ -268,6 +273,38 @@ public class Evaluator
         return new Null();
     }
 
+    private static Object.Object EvalHashLiteral(HashLiteral node, Environment env)
+    {
+        var pairs = new Dictionary<HashKey, HashPair>();
+
+        foreach (var (keyNode, valueNode) in node.Pairs)
+        {
+            var key = Eval(keyNode, env);
+            if (IsError(key))
+            {
+                return key;
+            }
+
+            if (key is not Hashable)
+            {
+                return NewError($"unusable as hash key: {key.Type()}");
+            }
+
+            var hashKey = key as Hashable;
+
+            var value = Eval(valueNode, env);
+            if (IsError(value))
+            {
+                return value;
+            }
+
+            var hashed = hashKey.HashKey();
+            pairs.Add(hashed, new HashPair {Key = key, Value = value});
+        }
+
+        return new Hash {Pairs = pairs};
+    }
+
     private static Object.Object EvalIndexExpression(Object.Object left, Object.Object index)
     {
         if (left.Type() == ObjectType.ARRAY_OBJ && index.Type() == ObjectType.INTEGER_OBJ)
@@ -275,7 +312,31 @@ public class Evaluator
             return EvalArrayIndexExpression(left, index);
         }
 
+        if (left.Type() == ObjectType.HASH_OBJ)
+        {
+            return EvalHashIndexExpression(left, index);
+        }
+
         return NewError($"index operator not supported: {left.Type()}");
+    }
+
+    private static Object.Object EvalHashIndexExpression(Object.Object hash, Object.Object index)
+    {
+        var hashObject = hash as Hash;
+
+        if (index is not Hashable)
+        {
+            return NewError($"unusable as hash key: {index.Type()}");
+        }
+
+        var key = index as Hashable;
+
+        if (!hashObject.Pairs.ContainsKey(key.HashKey()))
+        {
+            return new Null();
+        }
+
+        return hashObject.Pairs[key.HashKey()].Value;
     }
 
     private static Object.Object EvalArrayIndexExpression(Object.Object array, Object.Object index)

@@ -1,6 +1,6 @@
 namespace Monkey.Core.Object;
 
-public class Boolean : Object
+public class Boolean : Object, Hashable
 {
     public bool Value { get; set; }
 
@@ -13,6 +13,21 @@ public class Boolean : Object
     public override string Inspect()
     {
         return Value.ToString();
+    }
+
+    public HashKey HashKey()
+    {
+        int value;
+        if (Value)
+        {
+            value = 1;
+        }
+        else
+        {
+            value = 0;
+        }
+
+        return new HashKey {Type = Type(), Value = value};
     }
 
     public override bool Equals(object? obj)

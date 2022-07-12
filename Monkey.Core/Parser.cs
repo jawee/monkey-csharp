@@ -60,6 +60,7 @@ public class Parser
         RegisterPrefix(TokenType.FUNCTION, ParseFunctionLiteral);
         RegisterPrefix(TokenType.STRING, ParseStringLiteral);
         RegisterPrefix(TokenType.LBRACKET, ParseArrayLiteral);
+        RegisterPrefix(TokenType.LBRACE, ParseHashLiteral);
         
         RegisterInfix(TokenType.PLUS, ParseInfixExpression);
         RegisterInfix(TokenType.MINUS, ParseInfixExpression);
@@ -74,6 +75,43 @@ public class Parser
         
         NextToken();
         NextToken();
+    }
+
+    private Expression ParseHashLiteral()
+    {
+        var hash = new HashLiteral
+        {
+            Token = _curToken,
+            Pairs = new Dictionary<Expression, Expression>()
+        };
+
+        while (!PeekTokenIs(TokenType.RBRACE))
+        {
+            NextToken();
+            var key = ParseExpression(Precedence.LOWEST);
+
+            if (!ExpectPeek(TokenType.COLON))
+            {
+                return null;
+            }
+            
+            NextToken();
+
+            var value = ParseExpression(Precedence.LOWEST);
+            hash.Pairs.Add(key, value);
+
+            if (!PeekTokenIs(TokenType.RBRACE) && !ExpectPeek(TokenType.COMMA))
+            {
+                return null;
+            }
+        }
+
+        if (!ExpectPeek(TokenType.RBRACE))
+        {
+            return null;
+        }
+
+        return hash;
     }
 
     private Expression ParseIndexExpression(Expression left)
