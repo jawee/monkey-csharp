@@ -4,7 +4,7 @@ namespace Monkey.Core.Object;
 
 public class Environment
 {
-    private Dictionary<String, Object> _store = new Dictionary<string, Object>();
+    private Dictionary<string, Object> _store = new Dictionary<string, Object>();
 
     private Environment _outer;
     public static Environment NewEnclosedEnvironment(Environment outer)

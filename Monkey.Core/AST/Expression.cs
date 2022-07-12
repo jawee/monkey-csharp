@@ -4,5 +4,5 @@ public interface Expression : Node
 {
     public Node Node { get; set; }
     public abstract void ExpressionNode();
-    public abstract string String();
+    public new abstract string String();
 }

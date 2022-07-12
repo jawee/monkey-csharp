@@ -2,11 +2,6 @@ namespace Monkey.Test;
 
 public class LexerTest
 {
-    [SetUp]
-    public void Setup()
-    {
-    }
-
     [Test]
     public void TestNextTokenCharacters()
     {
@@ -65,6 +60,8 @@ public class LexerTest
 
         10 == 10;
         10 != 9;
+        ""foobar""
+        ""foo bar""
         ";
 
         var tests = new[]
@@ -142,6 +139,8 @@ public class LexerTest
             new {ExpectedType = TokenType.NOT_EQ, ExpectedLiteral = "!="},
             new {ExpectedType = TokenType.INT, ExpectedLiteral = "9"},
             new {ExpectedType = TokenType.SEMICOLON, ExpectedLiteral = ";"},
+            new {ExpectedType = TokenType.STRING, ExpectedLiteral = "foobar"},
+            new {ExpectedType = TokenType.STRING, ExpectedLiteral = "foo bar"},
             new {ExpectedType = TokenType.EOF, ExpectedLiteral = ""},
         }.ToList();
 

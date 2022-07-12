@@ -18,7 +18,7 @@ public class Function : Object
     {
         var builder = new StringBuilder();
 
-        var list = new List<String>();
+        var list = new List<string>();
         foreach (var param in Parameters)
         {
             list.Add(param.String());

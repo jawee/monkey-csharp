@@ -2,11 +2,48 @@ using Monkey.Core.Object;
 using Boolean = Monkey.Core.Object.Boolean;
 using Environment = Monkey.Core.Object.Environment;
 using Object = Monkey.Core.Object.Object;
+using String = Monkey.Core.Object.String;
 
 namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+    [Test]
+    public void TestStringConcatenation()
+    {
+        var input = @"""Hello"" + "" "" + ""World!""";
+
+        var evaluated = TestEval(input);
+
+        if (evaluated is not String)
+        {
+            Assert.Fail($"Object is not String. Got '{evaluated}'");
+        }
+
+        var str = evaluated as String;
+
+        if (!str.Value.Equals("Hello World!"))
+        {
+            Assert.Fail($"String has wrong value. Got '{str.Value}'");
+        }
+    }
+    [Test]
+    public void TestStringLiteral()
+    {
+        var input = @"""Hello World!""";
+
+        var evaluated = TestEval(input);
+        if (evaluated is not String)
+        {
+            Assert.Fail($"object is not String. Got '{evaluated}'");
+        }
+
+        var str = evaluated as String;
+        if (!str.Value.Equals("Hello World!"))
+        {
+            Assert.Fail($"String has wrong value. Got '{str.Value}'");
+        }
+    }
 
     [Test]
     public void TestClosures()
@@ -165,6 +202,11 @@ public class EvaluatorTest
             {
                 Input = "foobar",
                 Expected = "identifier not found: foobar"
+            },
+            new
+            {
+                Input = @"""Hello"" - ""World""",
+                Expected = "unknown operator: STRING - STRING"
             }
         };
 

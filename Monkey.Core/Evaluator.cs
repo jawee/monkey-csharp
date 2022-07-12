@@ -2,6 +2,7 @@ using Monkey.Core.AST;
 using Monkey.Core.Object;
 using Boolean = Monkey.Core.Object.Boolean;
 using Environment = Monkey.Core.Object.Environment;
+using String = Monkey.Core.Object.String;
 
 namespace Monkey.Core;
 
@@ -68,6 +69,11 @@ public class Evaluator
         if (node is IntegerLiteral iNode)
         {
             return new Integer {Value = iNode.Value};
+        }
+
+        if (node is StringLiteral strNode)
+        {
+            return new Object.String {Value = strNode.Value};
         }
 
         if (node is AST.Boolean bNode)
@@ -285,6 +291,11 @@ public class Evaluator
             return EvalIntegerInfixExpression(op, left, right);
         }
 
+        if (left.Type() == ObjectType.STRING_OBJ && right.Type() == ObjectType.STRING_OBJ)
+        {
+            return EvalStringInfixExpression(op, left, right);
+        }
+
         if (op.Equals("=="))
         {
             return NativeBoolToBooleanObject(left == right);
@@ -301,6 +312,19 @@ public class Evaluator
         }
 
         return NewError($"unknown operator: {left.Type()} {op} {right.Type()}");
+    }
+
+    private static Object.Object EvalStringInfixExpression(string op, Object.Object left, Object.Object right)
+    {
+        if (!op.Equals("+"))
+        {
+            return NewError($"unknown operator: {left.Type()} {op} {right.Type()}");
+        }
+
+        var leftStr = left as String;
+        var rightStr = right as String;
+
+        return new String {Value =  leftStr.Value + rightStr.Value};
     }
 
     private static Object.Object EvalIntegerInfixExpression(string op, Object.Object left, Object.Object right)

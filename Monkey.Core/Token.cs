@@ -19,6 +19,7 @@ public static class TokenType
     // Identifiers + literals
     public static readonly string IDENT = "IDENT";
     public static readonly string INT = "INT";
+    public static readonly string STRING = "STRING";
     
     // Operators
     public static readonly string ASSIGN = "=";

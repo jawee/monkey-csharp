@@ -56,6 +56,7 @@ public class Parser
         RegisterPrefix(TokenType.LPAREN, ParseGroupedExpression);
         RegisterPrefix(TokenType.IF, ParseIfExpression);
         RegisterPrefix(TokenType.FUNCTION, ParseFunctionLiteral);
+        RegisterPrefix(TokenType.STRING, ParseStringLiteral);
         
         RegisterInfix(TokenType.PLUS, ParseInfixExpression);
         RegisterInfix(TokenType.MINUS, ParseInfixExpression);
@@ -69,6 +70,11 @@ public class Parser
         
         NextToken();
         NextToken();
+    }
+
+    private Expression ParseStringLiteral()
+    {
+        return new StringLiteral {Token = _curToken, Value = _curToken.Literal};
     }
 
     private Expression ParseCallExpression(Expression function)

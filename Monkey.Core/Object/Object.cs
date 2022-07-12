@@ -8,6 +8,7 @@ public static class ObjectType
     public static string RETURN_VALUE_OBJ = "RETURN_VALUE";
     public static string ERROR_OBJ = "ERROR";
     public static string FUNCTION_OBJ = "FUNCTION";
+    public static string STRING_OBJ = "STRING";
 }
 
 public abstract class Object

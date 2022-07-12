@@ -11,6 +11,30 @@ namespace Monkey.Test;
 public class ParserTest
 {
     [Test]
+    public void TestStringLiteralExpression()
+    {
+        var input = @"""hello world""";
+
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        var stmt = program.Statements[0] as ExpressionStatement;
+        if (stmt.Expression is not StringLiteral)
+        {
+            Assert.Fail($"stmt.Expression is not StringLiteral. Got '{stmt.Expression}'");
+        }
+
+        var literal = stmt.Expression as StringLiteral;
+
+        if (!literal.Value.Equals("hello world"))
+        {
+            Assert.Fail($"literal.Value not 'hello world', Got '{literal.Value}'");
+        }
+    }
+    
+    [Test]
     public void TestOperatorPrecedenceParsing()
     {
         var tests = new[]
