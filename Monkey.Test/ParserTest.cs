@@ -1,6 +1,3 @@
-using System.Data;
-using System.Linq.Expressions;
-using System.Reflection;
 using Monkey.Core.AST;
 using NuGet.Frameworks;
 using Boolean = Monkey.Core.AST.Boolean;
@@ -10,6 +7,73 @@ namespace Monkey.Test;
 
 public class ParserTest
 {
+    [Test]
+    public void TestParsingIndexExpressions()
+    {
+        var input = "myArray[1 + 1]";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        if (program.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"program.Statements[0] is not ExpressionStatement. Got '{program.Statements[0]}'");
+        }
+
+        var stmt = program.Statements[0] as ExpressionStatement;
+
+        if (stmt.Expression is not IndexExpression)
+        {
+            Assert.Fail($"stmt.Expression is not IndexExpression. Got '{stmt.Expression}'");
+        }
+
+        var indexExp = stmt.Expression as IndexExpression;
+        if (!TestIdentifier(indexExp.Left, "myArray"))
+        {
+            Assert.Fail();
+        }
+
+        if (!TestInfixExpression(indexExp.Index, 1, "+", 1))
+        {
+            Assert.Fail();
+        }
+    }
+    
+    [Test]
+    public void TestParrsingArrayLiterals()
+    {
+        var input = @"[1, 2 * 2, 3 + 3]";
+
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        if (program.Statements[0] is not ExpressionStatement)
+        {
+            Assert.Fail($"program.Statements[0] is not ExpressionStatement. Got '{program.Statements[0]}'");
+        }
+
+        var stmt = program.Statements[0] as ExpressionStatement;
+
+        if (stmt.Expression is not ArrayLiteral)
+        {
+            Assert.Fail($"stmt.Expression is not ArrayLiteral. Got '{stmt.Expression}'");
+        }
+
+        var array = stmt.Expression as ArrayLiteral;
+
+        if (array.Elements.Count != 3)
+        {
+            Assert.Fail($"array.Elements.Count not 3. Got '{array.Elements.Count}'");
+        }
+
+        TestIntegerLiteral(array.Elements[0], 1);
+        TestInfixExpression(array.Elements[1], 2, "*", 2);
+        TestInfixExpression(array.Elements[2], 3, "+", 3);
+    }
+    
     [Test]
     public void TestStringLiteralExpression()
     {
@@ -159,6 +223,16 @@ public class ParserTest
                 Input = "add(a + b + c * d / f + g)",
                 Expected = "add((((a + b) + ((c * d) / f)) + g))"
             },
+            new
+            {
+                Input = "a * [1, 2, 3, 4][b * c] * d",
+                Expected = "((a * ([1, 2, 3, 4][(b * c)])) * d)"
+            },
+            new
+            {
+                Input = "add(a * b[2], b[1], 2 * [1, 2][1])",
+                Expected = "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))"
+            }
         };
         foreach (var test in tests)
         {

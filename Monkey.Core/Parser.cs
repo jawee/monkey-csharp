@@ -13,7 +13,8 @@ enum Precedence
     SUM = 4,
     PRODUCT = 5,
     PREFIX = 6,
-    CALL = 7
+    CALL = 7,
+    INDEX = 8
 }
 
 public class Parser
@@ -37,7 +38,8 @@ public class Parser
         {TokenType.MINUS, Precedence.SUM},
         {TokenType.SLASH, Precedence.PRODUCT},
         {TokenType.ASTERISK, Precedence.PRODUCT},
-        {TokenType.LPAREN, Precedence.CALL}
+        {TokenType.LPAREN, Precedence.CALL},
+        {TokenType.LBRACKET, Precedence.INDEX}
     };
 
     public Parser(Lexer lexer)
@@ -57,6 +59,7 @@ public class Parser
         RegisterPrefix(TokenType.IF, ParseIfExpression);
         RegisterPrefix(TokenType.FUNCTION, ParseFunctionLiteral);
         RegisterPrefix(TokenType.STRING, ParseStringLiteral);
+        RegisterPrefix(TokenType.LBRACKET, ParseArrayLiteral);
         
         RegisterInfix(TokenType.PLUS, ParseInfixExpression);
         RegisterInfix(TokenType.MINUS, ParseInfixExpression);
@@ -67,9 +70,60 @@ public class Parser
         RegisterInfix(TokenType.LT, ParseInfixExpression);
         RegisterInfix(TokenType.GT, ParseInfixExpression);
         RegisterInfix(TokenType.LPAREN, ParseCallExpression);
+        RegisterInfix(TokenType.LBRACKET, ParseIndexExpression);
         
         NextToken();
         NextToken();
+    }
+
+    private Expression ParseIndexExpression(Expression left)
+    {
+        var exp = new IndexExpression {Token = _curToken, Left = left};
+        NextToken();
+        exp.Index = ParseExpression(Precedence.LOWEST);
+
+        if (!ExpectPeek(TokenType.RBRACKET))
+        {
+            return null;
+        }
+
+        return exp;
+    }
+
+    private Expression ParseArrayLiteral()
+    {
+        var array = new ArrayLiteral {Token = _curToken};
+        array.Elements = ParseExpressionList(TokenType.RBRACKET);
+
+        return array;
+    }
+
+    private List<Expression> ParseExpressionList(string end)
+    {
+        var list = new List<Expression>();
+
+        if (PeekTokenIs(end))
+        {
+            NextToken();
+            return list;
+        }
+        
+        NextToken();
+        list.Add(ParseExpression(Precedence.LOWEST));
+
+        while (PeekTokenIs(TokenType.COMMA))
+        {
+            NextToken();
+            NextToken();
+            list.Add(ParseExpression(Precedence.LOWEST));
+        }
+
+        if (!ExpectPeek(end))
+        {
+            return null;
+        }
+
+        return list;
     }
 
     private Expression ParseStringLiteral()
@@ -80,38 +134,9 @@ public class Parser
     private Expression ParseCallExpression(Expression function)
     {
         var exp = new CallExpression {Token = _curToken, Function = function};
-        exp.Arguments = ParseCallArguments();
+        exp.Arguments = ParseExpressionList(TokenType.RPAREN);
 
         return exp;
-    }
-
-    private List<Expression> ParseCallArguments()
-    {
-        var args = new List<Expression>();
-
-        if (PeekTokenIs(TokenType.RPAREN))
-        {
-            NextToken();
-            return args;
-        }
-        
-        NextToken();
-        
-        args.Add(ParseExpression(Precedence.LOWEST));
-
-        while (PeekTokenIs(TokenType.COMMA))
-        {
-            NextToken();
-            NextToken();
-            args.Add(ParseExpression(Precedence.LOWEST));
-        }
-
-        if (!ExpectPeek(TokenType.RPAREN))
-        {
-            return null;
-        }
-
-        return args;
     }
 
     private Expression ParseFunctionLiteral()

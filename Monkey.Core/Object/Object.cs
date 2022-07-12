@@ -10,6 +10,7 @@ public static class ObjectType
     public static string FUNCTION_OBJ = "FUNCTION";
     public static string STRING_OBJ = "STRING";
     public static string BUILTIN_OBJ = "BUILTIN";
+    public static string ARRAY_OBJ = "ARRAY";
 }
 
 public abstract class Object

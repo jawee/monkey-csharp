@@ -89,6 +89,12 @@ public class Lexer
             case (byte) '"':
                 tok = new Token {Type = TokenType.STRING, Literal = ReadString()};
                 break;
+            case (byte) '[':
+                tok = new Token {Type = TokenType.LBRACKET, Literal = Convert.ToChar(_ch).ToString()};
+                break;
+            case (byte) ']':
+                tok = new Token {Type = TokenType.RBRACKET, Literal = Convert.ToChar(_ch).ToString()};
+                break;
             default:
                 if (IsLetter(_ch))
                 {

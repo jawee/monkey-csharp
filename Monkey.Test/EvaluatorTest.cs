@@ -1,4 +1,5 @@
 using Monkey.Core.Object;
+using Array = Monkey.Core.Object.Array;
 using Boolean = Monkey.Core.Object.Boolean;
 using Environment = Monkey.Core.Object.Environment;
 using Object = Monkey.Core.Object.Object;
@@ -8,6 +9,179 @@ namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+    [Test]
+    public void TestArrayPush()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "let myArray = []; push(myArray, 1);",
+                Expected = "[1]",
+            },
+            new
+            {
+                Input = "let myArray = [1]; push(myArray, 2);",
+                Expected = "[1, 2]"
+            },
+            new
+            {
+                Input = "let myArray = [1, 2, 3]; push(myArray, 4);",
+                Expected = "[1, 2, 3, 4]"
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input) as Array;
+            var evaluatedExpected = TestEval(test.Expected) as Array;
+
+            if (!ArrayEquals(evaluated, evaluatedExpected))
+            {
+                Assert.Fail($"evaluated is not equal to expected. Got '{evaluated.Inspect()}', Want '{evaluatedExpected.Inspect()}'"); 
+            }
+        }
+    }
+    [Test]
+    public void TestArrayFirst()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "let myArray = [1, 2, 3]; first(myArray);",
+                Expected = 1
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            TestIntegerObject(evaluated, test.Expected);
+        }
+    }
+
+    [Test]
+    public void TestArrayRest()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "let myArray = [1, 2, 3]; rest(myArray);",
+                Expected = "[2, 3]"
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input) as Array;
+            var evaluatedExpected = TestEval(test.Expected) as Array;
+
+            if (!ArrayEquals(evaluated, evaluatedExpected))
+            {
+               Assert.Fail($"evaluated is not equal to expected. Got '{evaluated.Inspect()}', Want '{evaluatedExpected.Inspect()}'"); 
+            }
+        }
+    }
+
+    private bool ArrayEquals(Array a1, Array a2)
+    {
+        return a1.Inspect().Equals(a2.Inspect());
+    }
+    [Test]
+    public void TestArrayIndexExpressionsNull()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "[1, 2, 3][3]",
+            },
+            new
+            {
+                Input = "[1, 2, 3][-1]"
+            }
+        };
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            TestNullObject(evaluated);
+        }
+    }
+    [Test]
+    public void TestArrayIndexExpressions()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "[1, 2, 3][0]",
+                Expected = 1
+            },
+            new
+            {
+                Input = "[1, 2, 3][1]",
+                Expected = 2
+            },
+            new
+            {
+                Input = "[1, 2, 3][2]",
+                Expected = 3
+            },
+            new
+            {
+                Input = "let i = 0; [1][i]",
+                Expected = 1
+            },
+            new
+            {
+                Input = "[1, 2, 3][1 + 1]",
+                Expected = 3
+            },
+            new
+            {
+                Input = "let myArray = [1, 2, 3]; myArray[2]",
+                Expected = 3
+            },
+            new
+            {
+                Input = "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2]",
+                Expected = 6
+            },
+            new
+            {
+                Input = "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
+                Expected = 2
+            },
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            TestIntegerObject(evaluated, test.Expected);
+        }
+    }
+    [Test]
+    public void TestArrayLiterals()
+    {
+        var input = "[1, 2 * 2, 3 + 3]";
+        var evaluated = TestEval(input);
+        if (evaluated is not Array)
+        {
+            Assert.Fail($"evaluated is not Array, Got '{evaluated}'");
+        }
+
+        var result = evaluated as Array;
+        if (result.Elements.Count != 3)
+        {
+            Assert.Fail($"array has wrong num of elements. Got '{result.Elements.Count}'");
+        }
+
+        TestIntegerObject(result.Elements[0], 1);
+        TestIntegerObject(result.Elements[1], 4);
+        TestIntegerObject(result.Elements[2], 6);
+    }
 
     [Test]
     public void TestBuiltinFunctionsError()
@@ -23,7 +197,7 @@ public class EvaluatorTest
             {
                 Input = @"len(""one"", ""two"")",
                 Expected = "wrong number of arguments. got=2, want=1"
-            }
+            },
         };
         foreach (var test in tests)
         {
@@ -61,6 +235,11 @@ public class EvaluatorTest
             {
                 Input = @"len(""hello world"")",
                 Expected = 11
+            },
+            new
+            {
+                Input = @"len([1, 2, 3])",
+                Expected = 3
             }
         };
 

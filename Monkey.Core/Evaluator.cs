@@ -1,5 +1,6 @@
 using Monkey.Core.AST;
 using Monkey.Core.Object;
+using Array = Monkey.Core.Object.Array;
 using Boolean = Monkey.Core.Object.Boolean;
 using Environment = Monkey.Core.Object.Environment;
 using String = Monkey.Core.Object.String;
@@ -11,8 +12,100 @@ public class Evaluator
 
     private static Dictionary<string, Object.Object> _builtins = new()
     {
-        {"len", new Builtin { Fn = LenFunc }}
+        {"len", new Builtin { Fn = LenFunc }},
+        {"first", new Builtin { Fn = FirstFunc}},
+        {"last", new Builtin { Fn = LastFunc}},
+        {"rest", new Builtin { Fn = RestFunc}},
+        {"push", new Builtin { Fn = PushFunc}},
     };
+
+    private static Object.Object PushFunc(List<Object.Object> args)
+    {
+        
+        if (args.Count != 2)
+        {
+            return NewError($"wrong number of arguments. got={args.Count}, want=2");
+        }
+
+        if (args[0].Type() != ObjectType.ARRAY_OBJ)
+        {
+            return NewError($"argument to 'last' must be ARRAY, got {args[0].Type()}");
+        }
+
+        var arr = args[0] as Array;
+        var length = arr.Elements.Count;
+        var newElements = new List<Object.Object>();
+        newElements.AddRange(arr.Elements);
+        newElements.Add(args[1]);
+        return new Array {Elements = newElements};
+    }
+
+    private static Object.Object RestFunc(List<Object.Object> args)
+    {
+        if (args.Count != 1)
+        {
+            return NewError($"wrong number of arguments. got={args.Count}, want=1");
+        }
+
+        if (args[0].Type() != ObjectType.ARRAY_OBJ)
+        {
+            return NewError($"argument to 'last' must be ARRAY, got {args[0].Type()}");
+        }
+
+        var arr = args[0] as Array;
+        var length = arr.Elements.Count;
+        if (length > 0)
+        {
+            var newList = new List<Object.Object>();
+            newList.AddRange(arr.Elements.GetRange(1, length-1));
+            return new Array {Elements = newList};
+        }
+
+        return new Null();
+    }
+
+    private static Object.Object LastFunc(List<Object.Object> args)
+    {
+        if (args.Count != 1)
+        {
+            return NewError($"wrong number of arguments. got={args.Count}, want=1");
+        }
+
+        if (args[0].Type() != ObjectType.ARRAY_OBJ)
+        {
+            return NewError($"argument to 'last' must be ARRAY, got {args[0].Type()}");
+        }
+
+        var arr = args[0] as Array;
+        var length = arr.Elements.Count;
+        if (length > 0)
+        {
+            return arr.Elements[length - 1];
+        }
+
+        return new Null();
+    }
+
+    private static Object.Object FirstFunc(List<Object.Object> args)
+    {
+        if (args.Count != 1)
+        {
+            return NewError($"wrong number of arguments. got={args.Count}, want=1");
+        }
+
+        if (args[0].Type() != ObjectType.ARRAY_OBJ)
+        {
+            return NewError($"argument to 'first' must be ARRAY, got {args[0].Type()}");
+        }
+
+        var arr = args[0] as Array;
+        if (arr.Elements.Count > 0)
+        {
+            return arr.Elements[0];
+        }
+
+        return new Null();
+    }
 
     private static Object.Object LenFunc(List<Object.Object> args)
     {
@@ -25,6 +118,11 @@ public class Evaluator
         if (arg is String str)
         {
             return new Integer {Value = str.Value.Length};
+        }
+
+        if (arg is Array arr)
+        {
+            return new Integer {Value = arr.Elements.Count};
         }
         return NewError($"argument to 'len' not supported, got {arg.Type()}");
     }
@@ -139,12 +237,61 @@ public class Evaluator
             return ApplyFunction(function, args);
         }
 
+        if (node is ArrayLiteral arr)
+        {
+            var elements = EvalExpressions(arr.Elements, env);
+            if (elements.Count == 1 && IsError(elements[0]))
+            {
+                return elements[0];
+            }
+
+            return new Object.Array { Elements = elements };
+        }
+
+        if (node is IndexExpression iExp)
+        {
+            var left = Eval(iExp.Left, env);
+            if (IsError(left))
+            {
+                return left;
+            }
+
+            var index = Eval(iExp.Index, env);
+            return EvalIndexExpression(left, index);
+        }
+
         if (node is Identifier ident)
         {
             return EvalIdentifier(ident, env);
         }
 
-        return null;
+        return new Null();
+    }
+
+    private static Object.Object EvalIndexExpression(Object.Object left, Object.Object index)
+    {
+        if (left.Type() == ObjectType.ARRAY_OBJ && index.Type() == ObjectType.INTEGER_OBJ)
+        {
+            return EvalArrayIndexExpression(left, index);
+        }
+
+        return NewError($"index operator not supported: {left.Type()}");
+    }
+
+    private static Object.Object EvalArrayIndexExpression(Object.Object array, Object.Object index)
+    {
+        var arrayObj = array as Array;
+        var idxObj = index as Integer;
+        var idx = idxObj.Value;
+        var max = arrayObj.Elements.Count - 1;
+
+        if (idx < 0 || idx > max)
+        {
+            return new Null();
+        }
+
+
+        return arrayObj.Elements[idx];
     }
 
     private static Object.Object ApplyFunction(Object.Object function, List<Object.Object> args)

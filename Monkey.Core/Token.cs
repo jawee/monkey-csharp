@@ -40,6 +40,8 @@ public static class TokenType
     public static readonly string RPAREN = ")";
     public static readonly string LBRACE = "{";
     public static readonly string RBRACE = "}";
+    public static readonly string LBRACKET = "[";
+    public static readonly string RBRACKET = "]";
     
     // Keywords
     public static readonly string FUNCTION = "FUNCTION";
