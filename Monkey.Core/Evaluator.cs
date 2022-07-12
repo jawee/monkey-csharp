@@ -8,6 +8,28 @@ namespace Monkey.Core;
 
 public class Evaluator
 {
+
+    private static Dictionary<string, Object.Object> _builtins = new()
+    {
+        {"len", new Builtin { Fn = LenFunc }}
+    };
+
+    private static Object.Object LenFunc(List<Object.Object> args)
+    {
+        if (args.Count != 1)
+        {
+            return NewError($"wrong number of arguments. got={args.Count}, want=1");
+        }
+
+        var arg = args[0];
+        if (arg is String str)
+        {
+            return new Integer {Value = str.Value.Length};
+        }
+        return NewError($"argument to 'len' not supported, got {arg.Type()}");
+    }
+
+
     public static Object.Object Eval(Node node, Environment env)
     {
         if (node is Program prog)
@@ -127,15 +149,19 @@ public class Evaluator
 
     private static Object.Object ApplyFunction(Object.Object function, List<Object.Object> args)
     {
-        if (function is not Function)
+        if (function is Function fn)
         {
-            return NewError($"not a function: {function.Type()}");
+            var extendedEnv = ExtendFunctionEnv(fn, args);
+            var evaluated = Eval(fn.Body, extendedEnv);
+            return UnwrapReturnValue(evaluated);
         }
 
-        var fn = function as Function;
-        var extendedEnv = ExtendFunctionEnv(fn, args);
-        var evaluated = Eval(fn.Body, extendedEnv);
-        return UnwrapReturnValue(evaluated);
+        if (function is Builtin bn)
+        {
+            return bn.Fn(args);
+        }
+
+        return NewError($"not a function: {function.Type()}");
     }
 
     private static Object.Object UnwrapReturnValue(Object.Object obj)
@@ -180,12 +206,17 @@ public class Evaluator
     private static Object.Object EvalIdentifier(Identifier ident, Environment env)
     {
         var val = env.Get(ident.Value);
-        if (val is null)
+        if (val is not null)
         {
-            return NewError($"identifier not found: {ident.Value}");
+            return val;
         }
 
-        return val;
+        if (_builtins.ContainsKey(ident.Value))
+        {
+            return _builtins[ident.Value];
+        }
+
+        return NewError($"identifier not found: {ident.Value}");
     }
 
     private static bool IsError(Object.Object obj)

@@ -8,6 +8,69 @@ namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+
+    [Test]
+    public void TestBuiltinFunctionsError()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = @"len(1)",
+                Expected = "argument to 'len' not supported, got INTEGER"
+            },
+            new
+            {
+                Input = @"len(""one"", ""two"")",
+                Expected = "wrong number of arguments. got=2, want=1"
+            }
+        };
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+
+            if (evaluated is not Error)
+            {
+                Assert.Fail($"object is not Error. Got '{evaluated}'");
+            }
+
+            var errObj = evaluated as Error;
+            if (!errObj.Message.Equals(test.Expected))
+            {
+                Assert.Fail($"wrong error message. Expected '{test.Expected}', got '{errObj.Message}'");
+            } 
+                
+        }
+    }
+    [Test]
+    public void TestBuiltinFunctionsSuccess()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = @"len("""")",
+                Expected = 0
+            },
+            new
+            {
+                Input = @"len(""four"")",
+                Expected = 4
+            },
+            new
+            {
+                Input = @"len(""hello world"")",
+                Expected = 11
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+
+            TestIntegerObject(evaluated, test.Expected);
+        }
+    }
     [Test]
     public void TestStringConcatenation()
     {
