@@ -13,6 +13,7 @@ public static class ObjectType
     public static string ARRAY_OBJ = "ARRAY";
     public static string HASH_OBJ = "HASH";
     public static string QUOTE_OBJ = "QUOTE";
+    public static string MACRO_OBJ = "MACRO";
 }
 
 public abstract class Object

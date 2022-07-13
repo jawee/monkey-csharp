@@ -204,7 +204,8 @@ public class Lexer
         {"false", TokenType.FALSE},
         {"if", TokenType.IF},
         {"else", TokenType.ELSE},
-        {"return", TokenType.RETURN}
+        {"return", TokenType.RETURN},
+        {"macro", TokenType.MACRO}
     };
 
     private string LookupIdent(string ident)

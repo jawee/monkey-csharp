@@ -64,6 +64,7 @@ public class LexerTest
         ""foo bar""
         [1, 2];
         {{""foo"": ""bar""}}
+        macro(x, y) {{ x + y; }};
         ";
 
         var tests = new[]
@@ -154,6 +155,19 @@ public class LexerTest
             new {ExpectedType = TokenType.COLON, ExpectedLiteral = ":"},
             new {ExpectedType = TokenType.STRING, ExpectedLiteral = "bar"},
             new {ExpectedType = TokenType.RBRACE, ExpectedLiteral = "}"},
+            new {ExpectedType = TokenType.MACRO, ExpectedLiteral = "macro"},
+            new {ExpectedType = TokenType.LPAREN, ExpectedLiteral = "("},
+            new {ExpectedType = TokenType.IDENT, ExpectedLiteral = "x"},
+            new {ExpectedType = TokenType.COMMA, ExpectedLiteral = ","},
+            new {ExpectedType = TokenType.IDENT, ExpectedLiteral = "y"},
+            new {ExpectedType = TokenType.RPAREN, ExpectedLiteral = ")"},
+            new {ExpectedType = TokenType.LBRACE, ExpectedLiteral = "{"},
+            new {ExpectedType = TokenType.IDENT, ExpectedLiteral = "x"},
+            new {ExpectedType = TokenType.PLUS, ExpectedLiteral = "+"},
+            new {ExpectedType = TokenType.IDENT, ExpectedLiteral = "y"},
+            new {ExpectedType = TokenType.SEMICOLON, ExpectedLiteral = ";"},
+            new {ExpectedType = TokenType.RBRACE, ExpectedLiteral = "}"},
+            new {ExpectedType = TokenType.SEMICOLON, ExpectedLiteral = ";"},
             new {ExpectedType = TokenType.EOF, ExpectedLiteral = ""},
         }.ToList();
 

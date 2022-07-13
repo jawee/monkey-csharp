@@ -61,6 +61,7 @@ public class Parser
         RegisterPrefix(TokenType.STRING, ParseStringLiteral);
         RegisterPrefix(TokenType.LBRACKET, ParseArrayLiteral);
         RegisterPrefix(TokenType.LBRACE, ParseHashLiteral);
+        RegisterPrefix(TokenType.MACRO, ParseMacroLiteral);
         
         RegisterInfix(TokenType.PLUS, ParseInfixExpression);
         RegisterInfix(TokenType.MINUS, ParseInfixExpression);
@@ -75,6 +76,27 @@ public class Parser
         
         NextToken();
         NextToken();
+    }
+
+    private Expression ParseMacroLiteral()
+    {
+        var lit = new MacroLiteral {Token = _curToken};
+
+        if (!ExpectPeek(TokenType.LPAREN))
+        {
+            return null;
+        }
+
+        lit.Parameters = ParseFunctionParameters();
+
+        if (!ExpectPeek(TokenType.LBRACE))
+        {
+            return null;
+        }
+
+        lit.Body = ParseBlockStatement();
+
+        return lit;
     }
 
     private Expression ParseHashLiteral()

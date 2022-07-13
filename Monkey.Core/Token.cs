@@ -52,6 +52,7 @@ public static class TokenType
     public static readonly string IF = "IF";
     public static readonly string ELSE = "ELSE";
     public static readonly string RETURN = "RETURN";
+    public static readonly string MACRO = "MACRO";
 
     public static readonly string EQ = "==";
     public static readonly string NOT_EQ = "!=";

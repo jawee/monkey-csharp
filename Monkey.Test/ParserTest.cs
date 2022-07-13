@@ -7,6 +7,46 @@ namespace Monkey.Test;
 public class ParserTest
 {
     [Test]
+    public void TestMacroLiteralParsing()
+    {
+        var input = "macro(x, y) { x + y; }";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var program = parser.ParseProgram();
+        CheckParserErrors(parser);
+
+        if (program.Statements.Count != 1)
+        {
+            Assert.Fail($"program.Statements does not contain '1' statements. Got '{program.Statements.Count}'");
+        }
+
+        if (program.Statements[0] is not ExpressionStatement stmt)
+        {
+            Assert.Fail($"program.Statements[0] is not ExpressionStatement, got '{program.Statements[0]}'");
+            return;
+        }
+
+        if (stmt.Expression is not MacroLiteral macro)
+        {
+            Assert.Fail($"stmt.Expression is not MacroLiteral, got '{stmt.Expression}'");
+            return;
+        }
+
+        if (macro.Body.Statements.Count != 1)
+        {
+            Assert.Fail($"macro.Body.Statements has not 1 statements. Got '{macro.Body.Statements.Count}'");
+        }
+
+        if (macro.Body.Statements[0] is not ExpressionStatement bodyStmt)
+        {
+            Assert.Fail($"macro body stmt is not ExpressionStatement, got '{macro.Body.Statements[0]}'");
+            return;
+        }
+
+        TestInfixExpression(bodyStmt.Expression, "x", "+", "y");
+    }
+    
+    [Test]
     public void TestParsingHashLiteralsStringKeys()
     {
         var input = @"{""one"": 1, ""two"": 2, ""three"": 3}";

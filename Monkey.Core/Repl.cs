@@ -12,6 +12,7 @@ public class Repl {
         Console.SetOut(output);
 
         var env = new Environment();
+        var macroEnv = new Environment();
 
         while (true) {
             Console.Write(PROMPT);
@@ -33,7 +34,9 @@ public class Repl {
                 continue;
             }
 
-            var evaluated = Evaluator.Eval(program, env);
+            Evaluator.DefineMacros(program, macroEnv);
+            var expanded = Evaluator.ExpandMacros(program, macroEnv);
+            var evaluated = Evaluator.Eval(expanded, env);
             if (evaluated is not null)
             {
                 Console.WriteLine($"{evaluated.Inspect()}");

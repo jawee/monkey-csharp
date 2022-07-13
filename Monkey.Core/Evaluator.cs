@@ -9,6 +9,59 @@ namespace Monkey.Core;
 
 public class Evaluator
 {
+    
+    public static void DefineMacros(Program program, Environment env)
+    {
+        var definitions = new List<int>();
+
+        for (var i = 0; i < program.Statements.Count; i++)
+        {
+            var statement = program.Statements[i];
+            if (IsMacroDefinition(statement))
+            {
+                AddMacro(statement, env);
+                definitions.Add(i);
+            }
+
+        }
+
+        for (var i = 0; i < definitions.Count; i++)
+        {
+            var definitionIndex = definitions[i];
+            
+            program.Statements.RemoveAt(definitionIndex);
+        }
+    }
+
+    private static void AddMacro(Statement stmt, Environment env)
+    {
+        var letStatement = stmt as LetStatement;
+        var macroLiteral = letStatement.Value as MacroLiteral;
+
+        var macro = new Macro
+        {
+            Parameters = macroLiteral.Parameters,
+            Env = env,
+            Body = macroLiteral.Body
+        };
+
+        env.Set(letStatement.Name.Value, macro);
+    }
+
+    private static bool IsMacroDefinition(Statement node)
+    {
+        if (node is not LetStatement letStatement)
+        {
+            return false;
+        }
+
+        if (letStatement.Value is not MacroLiteral)
+        {
+            return false;
+        }
+
+        return true;
+    }
 
     private static Dictionary<string, Object.Object> _builtins = new()
     {
@@ -768,5 +821,80 @@ public class Evaluator
         }
 
         return result;
+    }
+
+    public static Node ExpandMacros(Node program, Environment env)
+    {
+        return Modifier.Modify(program, (Node node) =>
+        {
+            if (node is not CallExpression callExpression)
+            {
+                return node;
+            }
+
+            var macro = IsMacroCall(callExpression, env);
+            if (macro is null)
+            {
+                return node;
+            }
+
+            var args = QuoteArgs(callExpression);
+            var evalEnv = ExtendMacroEnv(macro, args);
+
+            var evaluated = Eval(macro.Body, evalEnv);
+
+            if (evaluated is not Quote quote)
+            {
+                throw new SystemException("we only support returning AST-nodes from macros");
+            }
+
+            return quote.Node;
+        });
+    }
+
+    private static Environment ExtendMacroEnv(Macro macro, List<Quote> args)
+    {
+        var extended = Environment.NewEnclosedEnvironment(macro.Env);
+
+        for (var i = 0; i < macro.Parameters.Count; i++)
+        {
+            var param = macro.Parameters[i];
+            extended.Set(param.Value, args[i]);
+        }
+
+        return extended;
+    }
+
+    private static List<Quote> QuoteArgs(CallExpression exp)
+    {
+        var args = new List<Quote>();
+
+        foreach (var a in exp.Arguments)
+        {
+            args.Add(new Quote {Node = a});
+        }
+
+        return args;
+    }
+
+    private static Macro? IsMacroCall(CallExpression exp, Environment env)
+    {
+        if (exp.Function is not Identifier identifier)
+        {
+            return null;
+        }
+
+        var obj = env.Get(identifier.Value);
+        if (obj is null)
+        {
+            return null;
+        }
+
+        if (obj is not Macro macro)
+        {
+            return null;
+        }
+
+        return macro;
     }
 }

@@ -10,6 +10,110 @@ namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+    [Test]
+    public void TestExpandMacros()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "let infixExpression = macro() { quote(1 + 2); }; infixExpression();",
+                Expected = "(1 + 2)"
+            },
+            new
+            {
+                Input = "let reverse = macro(a, b) { quote(unquote(b) - unquote(a)); }; reverse(2 + 2, 10 - 5);",
+                Expected = "(10 - 5) - (2 + 2)"
+            },
+            new
+            {
+                Input = @"let unless = macro(condition, consequence, alternative) { quote(if (!(unquote(condition))) { unquote(consequence); } else { unquote(alternative); }); }; unless(10 > 5, puts(""not greater""), puts(""greater""));",
+                Expected = @"if (!(10 > 5)) { puts(""not greater"") } else { puts(""greater"") }"
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var expected = TestParseProgram(test.Expected);
+            var program = TestParseProgram(test.Input);
+
+            var env = new Environment();
+            Evaluator.DefineMacros(program, env);
+            var expanded = Evaluator.ExpandMacros(program, env);
+
+            if (!expanded.String().Equals(expected.String()))
+            {
+                Assert.Fail($"not equal. Want '{expanded.String()}', got '{expanded.String()}'");
+            }
+        }
+    }
+
+
+    [Test]
+    public void TestDefineMacros()
+    {
+        var input = @"let number = 1; let function = fn(x, y) {{ x + y }}; let mymacro = macro(x, y) { x + y; };";
+        var env = new Environment();
+        var program = TestParseProgram(input);
+        Evaluator.DefineMacros(program, env);
+
+        if (program.Statements.Count != 2)
+        {
+            Assert.Fail($"Wrong number of statements. Got '{program.Statements.Count}");
+        }
+
+        if (env.Get("number") is not null)
+        {
+            Assert.Fail($"number should not be defined");
+        }
+
+        if (env.Get("function") is not null)
+        {
+            Assert.Fail($"function should not be defined");
+        }
+
+        var obj = env.Get("mymacro");
+        if (obj is null)
+        {
+            Assert.Fail($"macro not in environment");
+        }
+
+        if (obj is not Macro macro)
+        {
+            Assert.Fail($"object is not Macro. Got '{obj}'");
+            return;
+        }
+
+        if (macro.Parameters.Count != 2)
+        {
+            Assert.Fail($"Wrong number of macro parameters. Got '{macro.Parameters.Count}");
+        }
+
+        if (!macro.Parameters[0].String().Equals("x"))
+        {
+            Assert.Fail($"parameter is not 'x', got '{macro.Parameters[0]}'");
+        }
+
+        if (!macro.Parameters[1].String().Equals("y"))
+        {
+            Assert.Fail($"parameter is not 'y', got '{macro.Parameters[1]}'");
+        }
+
+        var expectedBody = "(x + y)";
+
+        if (!macro.Body.String().Equals(expectedBody))
+        {
+            Assert.Fail($"body is not '{expectedBody}', got '{macro.Body.String()}'");
+        }
+    }
+
+
+    private Program TestParseProgram(string input)
+    {
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        return parser.ParseProgram();
+    }
 
     [Test]
     public void TestQuoteUnquote()
