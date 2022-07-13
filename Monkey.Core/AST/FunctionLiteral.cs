@@ -15,7 +15,7 @@ public class FunctionLiteral : Expression
 
     public string TokenLiteral()
     {
-        return Token.Literal;
+        return Token?.Literal;
     }
     public string String()
     {

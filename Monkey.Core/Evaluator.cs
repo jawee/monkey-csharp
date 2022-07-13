@@ -238,6 +238,10 @@ public class Evaluator
 
         if (node is CallExpression ce)
         {
+            if (ce.Function.TokenLiteral().Equals("quote"))
+            {
+                return quote(ce.Arguments[0], env);
+            }
             var function = Eval(ce.Function, env);
             if (IsError(function))
             {
@@ -283,6 +287,82 @@ public class Evaluator
 
         return new Null();
     }
+
+    private static Object.Object quote(Node node, Environment env)
+    {
+        node = EvalUnquoteCalls(node, env);
+        return new Quote {Node = node};
+    }
+
+    private static Node EvalUnquoteCalls(Node quoted, Environment env)
+    {
+        return Modifier.Modify(quoted, (Node node) =>
+        {
+            if (!IsUnquoteCall(node))
+            {
+                return node;
+            }
+
+            if (node is not CallExpression cExpr)
+            {
+                return node;
+            }
+
+            if (cExpr.Arguments.Count != 1)
+            {
+                return node;
+            }
+
+            var unquoted = Eval(cExpr.Arguments[0], env);
+            return ConvertObjectToASTNode(unquoted);
+        });
+    }
+
+    private static Node ConvertObjectToASTNode(Object.Object obj)
+    {
+        if (obj is Integer i)
+        {
+            var t = new Token
+            {
+                Type = TokenType.INT,
+                Literal = i.Value.ToString()
+            };
+            return new IntegerLiteral {Token = t, Value = i.Value};
+        }
+
+        if (obj is Boolean bo)
+        {
+            Token t;
+            if (bo.Value)
+            {
+                t = new Token {Type = TokenType.TRUE, Literal = "true"};
+            }
+            else
+            {
+                t = new Token {Type = TokenType.FALSE, Literal = "false"};
+            }
+
+            return new AST.Boolean {Token = t, Value = bo.Value};
+        }
+
+        if (obj is Quote q)
+        {
+            return q.Node;
+        }
+
+        return null;
+    }
+
+    private static bool IsUnquoteCall(Node node)
+    {
+        if (node is not CallExpression cExpr)
+        {
+            return false;
+        }
+
+        return cExpr.Function.TokenLiteral().Equals("unquote");
+    }
+
 
     private static Object.Object EvalHashLiteral(HashLiteral node, Environment env)
     {

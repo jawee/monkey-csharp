@@ -101,7 +101,7 @@ public class LetStatement : Statement
         var builder = new StringBuilder();
         builder.Append(TokenLiteral());
         builder.Append(" ");
-        builder.Append(Name.String());
+        builder.Append(Name?.String());
         builder.Append(" = ");
 
         if (Value != null)

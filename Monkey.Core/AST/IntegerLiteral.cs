@@ -24,4 +24,9 @@ public class IntegerLiteral : Expression
     {
         return Token.Literal;
     }
+
+    public override string ToString()
+    {
+        return $"{Token.Literal}";
+    }
 }

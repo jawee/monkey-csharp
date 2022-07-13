@@ -1,3 +1,4 @@
+using Monkey.Core.AST;
 using Monkey.Core.Object;
 using Array = Monkey.Core.Object.Array;
 using Boolean = Monkey.Core.Object.Boolean;
@@ -9,6 +10,133 @@ namespace Monkey.Test;
 
 public class EvaluatorTest
 {
+
+    [Test]
+    public void TestQuoteUnquote()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "quote(unquote(4))",
+                Expected = "4"
+            },
+            new
+            {
+                Input = "quote(unquote(4 + 4))",
+                Expected = "8"
+            },
+            new
+            {
+                Input = "quote(8 + unquote(4 + 4))",
+                Expected = "(8 + 8)"
+            },
+            new
+            {
+                Input = "quote(unquote(4 + 4) + 8)",
+                Expected = "(8 + 8)"
+            },
+            new
+            {
+                Input = "let foobar = 8; quote(foobar)",
+                Expected = "foobar"
+            },
+            new
+            {
+                Input = "let foobar = 8; quote(unquote(foobar))",
+                Expected = "8"
+            },
+            new
+            {
+                Input = "quote(unquote(true))",
+                Expected = "true"
+            },
+            new
+            {
+                Input = "quote(unquote(true == false))",
+                Expected = "false"
+            },
+            new
+            {
+                Input = "quote(unquote(quote(4 + 4)))",
+                Expected = "(4 + 4)"
+            },
+            new
+            {
+                Input = "let quotedInfixExpression = quote(4 + 4); quote(unquote(4 + 4) + unquote(quotedInfixExpression))",
+                Expected = "(8 + (4 + 4))"
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            if (evaluated is not Quote)
+            {
+                Assert.Fail($"expected Quote. Got '{evaluated}'");
+            }
+
+            var quote = evaluated as Quote;
+
+            if (quote.Node == null)
+            {
+                Assert.Fail("quote.Node is null");
+            }
+
+            if (!quote.Node.String().Equals(test.Expected))
+            {
+                Assert.Fail($"Not equal. Got '{quote.Node.String()}'. Want '{test.Expected}'");
+            }
+        }
+    }
+    [Test]
+    public void TestQuote()
+    {
+        var tests = new[]
+        {
+            new
+            {
+                Input = "quote(5)",
+                Expected = "5"
+            },
+            new
+            {
+                Input = "quote(5 + 8)",
+                Expected = "(5 + 8)"
+            }, 
+            new
+            {
+                Input = "quote(foobar)",
+                Expected = "foobar"
+            },
+            new
+            {
+                Input = "quote(foobar + barfoo)",
+                Expected = "(foobar + barfoo)"
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var evaluated = TestEval(test.Input);
+            if (evaluated is not Quote)
+            {
+                Assert.Fail($"expected Quote. Got '{evaluated}'");
+            }
+
+            var quote = evaluated as Quote;
+
+            if (quote.Node == null)
+            {
+                Assert.Fail($"quote.Node is null");
+            }
+
+            if (!quote.Node.String().Equals(test.Expected))
+            {
+                Assert.Fail($"not equal. Got '{quote.Node.String()}'. Want '{test.Expected}'");
+            }
+        }
+    }
     [Test]
     public void TestHashIndexExpressionsInt()
     {

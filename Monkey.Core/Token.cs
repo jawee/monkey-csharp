@@ -2,8 +2,8 @@
 
 public class Token
 {
-    public string Type { get; init; }
-    public string Literal { get; init; }
+    public string Type { get; set; }
+    public string Literal { get; set; }
 
     public override string ToString()
     {
