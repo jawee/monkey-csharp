@@ -11,8 +11,6 @@ public class Repl {
         Console.SetIn(input);
         Console.SetOut(output);
 
-        var env = new Environment();
-
         while (true) {
             Console.Write(PROMPT);
 
@@ -33,11 +31,22 @@ public class Repl {
                 continue;
             }
 
-            var evaluated = Evaluator.Eval(program, env);
-            if (evaluated is not null)
+            var comp = new Compiler.Compiler();
+            var err = comp.Compile(program);
+            if (err is not null)
             {
-                Console.WriteLine($"{evaluated.Inspect()}");
+                Console.WriteLine($"Woops! Compilation failed:\n {err}");
             }
+
+            var machine = new Vm.Vm(comp.Bytecode());
+            err = machine.Run();
+            if (err is not null)
+            {
+                Console.WriteLine($"Woops! Executing bytecode failed:\n {err}");
+            }
+
+            var stackTop = machine.StackTop();
+            Console.WriteLine($"{stackTop?.Inspect()}");
         }
     }
     
