@@ -9,6 +9,118 @@ namespace Monkey.Test;
 
 public class CompilerTest
 {
+    [Test]
+    public void TestBooleanExpressions()
+    {
+        var tests = new List<CompilerTestCase> 
+        {
+            new()
+            {
+                Input = "true",
+                ExpectedConstants = new List<int>(),
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpTrue),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "false",
+                ExpectedConstants = new List<int>(),
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpFalse),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "1 > 2",
+                ExpectedConstants = new List<int> {1, 2},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpConstant, new List<int> {1}),
+                    Code.Make(Opcode.OpGreaterThan),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "1 < 2",
+                ExpectedConstants = new List<int> {2, 1},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpConstant, new List<int> {1}),
+                    Code.Make(Opcode.OpGreaterThan),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "1 == 2",
+                ExpectedConstants = new List<int> {1, 2},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpConstant, new List<int> {1}),
+                    Code.Make(Opcode.OpEqual),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "1 != 2",
+                ExpectedConstants = new List<int> {1, 2},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpConstant, new List<int> {1}),
+                    Code.Make(Opcode.OpNotEqual),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "true == false",
+                ExpectedConstants = new List<int> {},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpTrue),
+                    Code.Make(Opcode.OpFalse),
+                    Code.Make(Opcode.OpEqual),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "true != false",
+                ExpectedConstants = new List<int> {},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpTrue),
+                    Code.Make(Opcode.OpFalse),
+                    Code.Make(Opcode.OpNotEqual),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "!true",
+                ExpectedConstants = new List<int>(),
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpTrue),
+                    Code.Make(Opcode.OpBang),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
     private struct CompilerTestCase
     {
         public string Input { get; set; }
@@ -24,7 +136,37 @@ public class CompilerTest
             {
                 Input = "1 + 2",
                 ExpectedConstants = new List<int> {1, 2},
-                ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpAdd)}
+                ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpAdd), Code.Make(Opcode.OpPop)}
+            },
+            new()
+            {
+                Input = "1; 2",
+                ExpectedConstants = new List<int> {1, 2},
+                ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpPop), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpPop)}
+            },
+            new()
+            {
+                Input = "1 - 2",
+                ExpectedConstants = new List<int> {1, 2},
+                ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpSub), Code.Make(Opcode.OpPop)}
+            },
+            new()
+            {
+                Input = "1 * 2",
+                ExpectedConstants = new List<int> {1, 2},
+                ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpMul), Code.Make(Opcode.OpPop)}
+            },
+            new()
+            {
+                Input = "1 / 2",
+                ExpectedConstants = new List<int> {1, 2},
+                ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpDiv), Code.Make(Opcode.OpPop)}
+            },
+            new()
+            {
+                Input = "-1",
+                ExpectedConstants = new List<int> {1},
+                ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpMinus), Code.Make(Opcode.OpPop)}
             }
         };
 

@@ -3,12 +3,142 @@ using Monkey.Core.AST;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
 using Monkey.Core.Vm;
+using Boolean = Monkey.Core.Object.Boolean;
 using Object = Monkey.Core.Object.Object;
 
 namespace Monkey.Test;
 
 public class VmTest
 {
+    [Test]
+    public void TestBooleanExpressions()
+    {
+        var tests = new VmTestCase[]
+        {
+            new() 
+            {
+                Input = "true",
+                Expected = true
+            },
+            new() 
+            {
+                Input = "false",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "1 < 2",
+                Expected = true
+            },
+            new() 
+            {
+                Input = "1 > 2",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "1 < 1",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "1 > 1",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "1 == 1",
+                Expected = true
+            },
+            new() 
+            {
+                Input = "1 != 1",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "1 == 2",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "1 != 2",
+                Expected = true
+            },
+            new() 
+            {
+                Input = "true == true",
+                Expected = true
+            },
+            new() 
+            {
+                Input = "false == false",
+                Expected = true
+            },
+            new() 
+            {
+                Input = "true == false",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "true != false",
+                Expected = true
+            },
+            new() 
+            {
+                Input = "(1 < 2) == true",
+                Expected = true
+            },
+            new() 
+            {
+                Input = "(1 < 2) == false",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "(1 > 2) == true",
+                Expected = false
+            },
+            new() 
+            {
+                Input = "(1 > 2) == false",
+                Expected = true
+            },
+            new()
+            {
+                Input = "!true",
+                Expected = false
+            },
+            new()
+            {
+                Input = "!false",
+                Expected = true
+            },
+            new()
+            {
+                Input = "!5",
+                Expected = false
+            },
+            new()
+            {
+                Input = "!!true",
+                Expected = true
+            },
+            new()
+            {
+                Input = "!!false",
+                Expected = false
+            },
+            new()
+            {
+                Input = "!!5",
+                Expected = true
+            },
+        };
+        
+        RunVmTests(tests);
+    }
     [Test]
     public void TestIntegerArithmetic()
     {
@@ -28,7 +158,66 @@ public class VmTest
             {
                 Input = "1 + 2",
                 Expected = 3
-            }
+            },
+            new VmTestCase
+            {
+                Input = "1 - 2",
+                Expected = -1
+            },
+            new VmTestCase
+            {
+                Input = "1 * 2",
+                Expected = 2
+            },
+            new()
+            {
+                Input = "4 / 2",
+                Expected = 2
+            },
+            new()
+            {
+                Input = "50 / 2 * 2 + 10 - 5",
+                Expected = 55
+            },
+            new()
+            {
+                Input = "5 + 5 + 5 + 5 -10",
+                Expected = 10
+            },
+            new()
+            {
+                Input = "2 * 2 * 2 * 2 * 2",
+                Expected = 32
+            },
+            new()
+            {
+                Input = "5 * 2 + 10",
+                Expected = 20
+            },
+            new()
+            {
+                Input = "5 + 2 * 10", Expected = 25
+            },
+            new()
+            {
+                Input = "5 * (2 + 10)", Expected = 60
+            },
+            new()
+            {
+                Input = "-5", Expected = -5
+            },
+            new()
+            {
+                Input = "-10", Expected = -10
+            },
+            new()
+            {
+                Input = "-50 + 100 + -50", Expected = 0
+            },
+            new()
+            {
+                Input = "(5 + 10 * 2 + 15 / 3) * 2 + -10", Expected = 50
+            },
         };
         
         RunVmTests(tests);
@@ -60,7 +249,7 @@ public class VmTest
                 Assert.Fail($"vm error: {err}");
             }
 
-            var stackElem = vm.StackTop();
+            var stackElem = vm.LastPoppedStackElem();
 
             TestExpectedObject(tt.Expected, stackElem);
         }
@@ -76,7 +265,32 @@ public class VmTest
                 Assert.Fail($"TestIntegerObject failed: {err}");
             }
         }
+
+        if (expected is bool b)
+        {
+            var err = TestBooleanObject(b, actual);
+            if (err is not null)
+            {
+                Assert.Fail($"TestBooleanObject failed: {err}");
+            }
+        }
     }
+
+    private string? TestBooleanObject(bool expected, Object actual)
+    {
+        if (actual is not Boolean b)
+        {
+            return $"object is not Boolean. Got '{actual}'";
+        }
+
+        if (b.Value != expected)
+        {
+            return $"object has wrong value, got '{b.Value}', want '{expected}'";
+        }
+
+        return null;
+    }
+
     private static Program Parse(string input)
     {
         var lexer = new Lexer(input);
@@ -88,7 +302,7 @@ public class VmTest
     {
         if (actual is not Integer result)
         {
-            return $"objeect is not Integer. Got '{actual}'";
+            return $"object is not Integer. Got '{actual}'";
         }
 
         if (result.Value != expected)

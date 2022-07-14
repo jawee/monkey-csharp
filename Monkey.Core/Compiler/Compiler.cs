@@ -1,6 +1,7 @@
 using Monkey.Core.AST;
 using Monkey.Core.Code;
 using Monkey.Core.Object;
+using Boolean = Monkey.Core.AST.Boolean;
 
 namespace Monkey.Core.Compiler;
 
@@ -36,11 +37,33 @@ public class Compiler
             {
                 return err;
             }
+
+            Emit(Opcode.OpPop);
         }
 
         if (node is InfixExpression infExpr)
         {
-            var err = Compile(infExpr.Left);
+            string? err = null;
+
+            if (infExpr.Operator.Equals("<"))
+            {
+                err = Compile(infExpr.Right);
+                if (err is not null)
+                {
+                    return err;
+                }
+
+                err = Compile(infExpr.Left);
+                if (err is not null)
+                {
+                    return err;
+                }
+
+                Emit(Opcode.OpGreaterThan);
+                return null;
+            }
+            
+            err = Compile(infExpr.Left);
             if (err is not null)
             {
                 return err;
@@ -57,6 +80,24 @@ public class Compiler
                 case "+":
                     Emit(Opcode.OpAdd);
                     break;
+                case "-":
+                    Emit(Opcode.OpSub);
+                    break;
+                case "*":
+                    Emit(Opcode.OpMul);
+                    break;
+                case "/":
+                    Emit(Opcode.OpDiv);
+                    break;
+                case ">":
+                    Emit(Opcode.OpGreaterThan);
+                    break;
+                case "==":
+                    Emit(Opcode.OpEqual);
+                    break;
+                case "!=":
+                    Emit(Opcode.OpNotEqual);
+                    break;
                 default:
                     return $"unknown operator {infExpr.Operator}";
                 
@@ -67,6 +108,39 @@ public class Compiler
         {
             var integer = new Integer {Value = iLtrl.Value};
             Emit(Opcode.OpConstant, new List<int>() {AddConstant(integer)});
+        }
+        
+        if (node is Boolean b)
+        {
+            if (b.Value)
+            {
+                Emit(Opcode.OpTrue);
+            }
+            else
+            {
+                Emit(Opcode.OpFalse);
+            }
+        }
+
+        if (node is PrefixExpression pExpr)
+        {
+            var err = Compile(pExpr.Right);
+            if (err is not null)
+            {
+                return err;
+            }
+
+            switch (pExpr.Operator)
+            {
+               case "!":
+                   Emit(Opcode.OpBang);
+                   break;
+               case "-":
+                   Emit(Opcode.OpMinus);
+                   break;
+               default:
+                   return $"unknown operator {pExpr.Operator}";
+            }
         }
         
         return null;

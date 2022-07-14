@@ -1,12 +1,16 @@
+using System.Reflection.Emit;
 using Monkey.Core.Code;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
+using Boolean = Monkey.Core.Object.Boolean;
 
 namespace Monkey.Core.Vm;
 
 public class Vm
 {
     private const int StackSize = 2048;
+    private readonly Boolean TRUE = new() {Value = true};
+    private readonly Boolean FALSE = new() {Value = false};
     public List<Object.Object> Constants { get; set; }
     public Instructions Instructions { get; set; }
     public Object.Object[] Stack { get; set; }
@@ -27,16 +31,21 @@ public class Vm
         {
             var op = (Opcode) Instructions[ip];
 
+            string? err = null;
             switch (op)
             {
+                case Opcode.OpPop:
+                    Pop();
+                    break;
                case Opcode.OpAdd:
-                    var right = Pop();
-                    var left = Pop();
-                    var leftValue = (left as Integer).Value;
-                    var rightValue = (right as Integer).Value;
-
-                    var result = leftValue + rightValue;
-                    Push(new Integer {Value = result});
+               case Opcode.OpSub:
+               case Opcode.OpDiv:
+               case Opcode.OpMul:
+                   err = ExecuteBinaryOperation(op);
+                   if (err is not null)
+                   {
+                       return err;
+                   }
                     break;
                case Opcode.OpConstant:
                    var bytes = Instructions.GetRange(ip+1, Instructions.Count - ip - 1);
@@ -44,16 +53,183 @@ public class Vm
                    newInstr.AddRange(bytes);
                    var constIndex = Code.Code.ReadUint16(newInstr);
                    ip += 2;
-                   var err = Push(Constants[constIndex]);
+                   err = Push(Constants[constIndex]);
                    if (err is not null)
                    {
                        return err;
                    }
                    break;
+               case Opcode.OpTrue:
+                   err = Push(TRUE);
+                   if (err is not null)
+                   {
+                       return err;
+                   }
+                   break;
+               case Opcode.OpFalse:
+                   err = Push(FALSE);
+                   if (err is not null)
+                   {
+                       return err;
+                   }
+                   break;
+               case Opcode.OpEqual:
+               case Opcode.OpNotEqual:
+               case Opcode.OpGreaterThan:
+                   err = ExecuteComparison(op);
+                   if (err is not null)
+                   {
+                       return err;
+                   }
+                   break;
+               case Opcode.OpBang:
+                   err = ExecuteBangOperator();
+                   if (err is not null)
+                   {
+                       return err;
+                   }
+
+                   break;
+               case Opcode.OpMinus:
+                   err = ExecuteMinusOperator();
+                   if (err is not null)
+                   {
+                       return err;
+                   }
+
+                   break;
             }
         }
 
         return null;
+    }
+
+    private string? ExecuteMinusOperator()
+    {
+        var operand = Pop();
+        if (!operand.Type().Equals(ObjectType.INTEGER_OBJ))
+        {
+            return $"unsupported type for negation: {operand.Type()}";
+        }
+
+        var value = (operand as Integer).Value;
+        return Push(new Integer {Value = -value});
+    }
+
+    private string? ExecuteBangOperator()
+    {
+        var operand = Pop();
+        if (operand is Boolean b)
+        {
+            if (b.Value)
+            {
+                Push(FALSE);
+                return null;
+            }
+            Push(TRUE);
+            return null;
+        }
+
+        Push(FALSE);
+        return null;
+    }
+
+    private string? ExecuteComparison(Opcode op)
+    {
+        var right = Pop();
+        var left = Pop();
+
+        if (left.Type().Equals(ObjectType.INTEGER_OBJ) && right.Type().Equals(ObjectType.INTEGER_OBJ))
+        {
+            return ExecuteIntegerComparison(op, left, right);
+        }
+
+        switch (op)
+        {
+            case Opcode.OpEqual:
+                return Push(NativeBoolToBooleanObject(right == left));
+            case Opcode.OpNotEqual:
+                return Push(NativeBoolToBooleanObject(right != left));
+            default:
+                return $"unknown operator: {op} ({left.Type()} {right.Type()})";
+        }
+    }
+
+    private Object.Object NativeBoolToBooleanObject(bool b)
+    {
+        if (b)
+        {
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    private string? ExecuteIntegerComparison(Opcode op, Object.Object left, Object.Object right)
+    {
+        var leftValue = (left as Integer).Value;
+        var rightValue = (right as Integer).Value;
+
+        switch (op)
+        {
+            case Opcode.OpEqual:
+                return Push(NativeBoolToBooleanObject(rightValue == leftValue));
+            case Opcode.OpNotEqual:
+                return Push(NativeBoolToBooleanObject(rightValue != leftValue));
+            case Opcode.OpGreaterThan:
+                return Push(NativeBoolToBooleanObject(leftValue > rightValue));
+            default:
+                return $"unknown operator: {op}";
+        }
+    }
+
+    private string? ExecuteBinaryOperation(Opcode op)
+    {
+        var right = Pop();
+        var left = Pop();
+
+        var leftType = left.Type();
+        var rightType = right.Type();
+
+        if (leftType.Equals(ObjectType.INTEGER_OBJ) && rightType.Equals(ObjectType.INTEGER_OBJ))
+        {
+            return ExecuteBinaryIntegerOperation(op, left, right);
+        }
+
+        return $"unsupported types for binary operation: {leftType} {rightType}";
+    }
+
+    private string? ExecuteBinaryIntegerOperation(Opcode op, Object.Object left, Object.Object right)
+    {
+        var leftValue = (left as Integer).Value;
+        var rightValue = (right as Integer).Value;
+
+        int result;
+
+        switch (op)
+        {
+            case Opcode.OpAdd:
+                result = leftValue + rightValue;
+                break;
+            case Opcode.OpSub:
+                result = leftValue - rightValue;
+                break;
+            case Opcode.OpMul:
+                result = leftValue * rightValue;
+                break;
+            case Opcode.OpDiv:
+                result = leftValue / rightValue;
+                break;
+            default:
+                return $"unknown integer operator {op}";
+        }
+
+        return Push(new Integer {Value = result});
+    }
+
+    public Object.Object LastPoppedStackElem()
+    {
+        return Stack[sp];
     }
 
     private Object.Object Pop()

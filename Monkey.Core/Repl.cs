@@ -45,8 +45,8 @@ public class Repl {
                 Console.WriteLine($"Woops! Executing bytecode failed:\n {err}");
             }
 
-            var stackTop = machine.StackTop();
-            Console.WriteLine($"{stackTop?.Inspect()}");
+            var lastPopped = machine.LastPoppedStackElem();
+            Console.WriteLine($"{lastPopped?.Inspect()}");
         }
     }
     

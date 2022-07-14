@@ -6,7 +6,18 @@ namespace Monkey.Core.Code;
 public enum Opcode : byte
 {
     OpConstant,
-    OpAdd
+    OpAdd,
+    OpSub,
+    OpMul,
+    OpDiv,
+    OpPop,
+    OpTrue,
+    OpFalse,
+    OpEqual,
+    OpNotEqual,
+    OpGreaterThan,
+    OpMinus,
+    OpBang
 }
 
 public class Code
@@ -14,7 +25,18 @@ public class Code
     private static Dictionary<Opcode, Definition> definitions = new()
     {
         {Opcode.OpConstant, new Definition { Name = "OpConstant", OperandWidths = new List<int> {2}}},
-        {Opcode.OpAdd, new Definition { Name = "OpAdd", OperandWidths = new List<int> {}}}
+        {Opcode.OpAdd, new Definition { Name = "OpAdd", OperandWidths = new List<int> {}}},
+        {Opcode.OpPop, new Definition { Name = "OpPop", OperandWidths = new List<int> {}}},
+        {Opcode.OpSub, new Definition { Name = "OpPop", OperandWidths = new List<int> {}}},
+        {Opcode.OpMul, new Definition { Name = "OpPop", OperandWidths = new List<int> {}}},
+        {Opcode.OpDiv, new Definition { Name = "OpPop", OperandWidths = new List<int> {}}},
+        {Opcode.OpTrue, new Definition { Name = "OpTrue", OperandWidths = new List<int> {}}},
+        {Opcode.OpFalse, new Definition { Name = "OpFalse", OperandWidths = new List<int> {}}},
+        {Opcode.OpEqual, new Definition { Name = "OpEqual", OperandWidths = new List<int> {}}},
+        {Opcode.OpNotEqual, new Definition { Name = "OpNotEqual", OperandWidths = new List<int> {}}},
+        {Opcode.OpGreaterThan, new Definition { Name = "OpGreaterThan", OperandWidths = new List<int> {}}},
+        {Opcode.OpMinus, new Definition { Name = "OpMinus", OperandWidths = new List<int> {}}},
+        {Opcode.OpBang, new Definition { Name = "OpBang", OperandWidths = new List<int> {}}},
     };
 
     public static (Definition?, string?) Lookup(Opcode op)
