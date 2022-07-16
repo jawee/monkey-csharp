@@ -1,5 +1,4 @@
-
-namespace Monkey.Core.Object;
+namespace Monkey.Core.Code;
 
 public class Definition
 {

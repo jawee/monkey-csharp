@@ -1,3 +1,4 @@
+using Monkey.Core.Compiler;
 using Monkey.Core.Object;
 using Environment = Monkey.Core.Object.Environment;
 
@@ -10,6 +11,9 @@ public class Repl {
     {
         Console.SetIn(input);
         Console.SetOut(output);
+
+        var globals = new List<Object.Object>();
+        var symbolTable = new SymbolTable();
 
         while (true) {
             Console.Write(PROMPT);
@@ -31,14 +35,18 @@ public class Repl {
                 continue;
             }
 
-            var comp = new Compiler.Compiler();
+            var comp = new Compiler.Compiler(symbolTable, globals);
             var err = comp.Compile(program);
             if (err is not null)
             {
                 Console.WriteLine($"Woops! Compilation failed:\n {err}");
             }
 
-            var machine = new Vm.Vm(comp.Bytecode());
+            var code = comp.Bytecode();
+            var constants = code.Constants;
+            
+
+            var machine = new Vm.Vm(code, globals);
             err = machine.Run();
             if (err is not null)
             {

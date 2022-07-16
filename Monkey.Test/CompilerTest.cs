@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-using System.Reflection.Emit;
 using Monkey.Core.AST;
 using Monkey.Core.Code;
 using Monkey.Core.Compiler;
@@ -10,6 +8,108 @@ namespace Monkey.Test;
 
 public class CompilerTest
 {
+    [Test]
+    public void TestDefine()
+    {
+        var expected = new Dictionary<string, Symbol>
+        {
+            {"a", new Symbol {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0}},
+            {"b", new Symbol {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1}}
+        };
+
+        var global = new SymbolTable();
+
+        var a = global.Define("a");
+        if (!a.Equals(expected["a"]))
+        {
+            Assert.Fail($"expected a={expected["a"]}, got={a}");
+        }
+
+        var b = global.Define("b");
+        if (!b.Equals(expected["b"]))
+        {
+            Assert.Fail($"expected b={expected["b"]}, got={b}");
+        }
+    }
+
+    [Test]
+    public void TestResolveGlobal()
+    {
+        var global = new SymbolTable();
+        global.Define("a");
+        global.Define("b");
+
+        var expected = new List<Symbol>
+        {
+            new Symbol {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0},
+            new Symbol {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1},
+        };
+
+        foreach (var symbol in expected)
+        {
+            var (result, ok) = global.Resolve(symbol.Name);
+            if (!ok)
+            {
+                Assert.Fail($"name {symbol.Name} is not resolvable");
+            }
+
+            if (!result.Equals(symbol))
+            {
+                Assert.Fail($"expected {symbol.Name} to resolve to {symbol}, got {result}");
+            }
+        }
+    }
+    [Test]
+    public void TestGlobalLetStatements()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = @"let one = 1;
+                        let two = 2;",
+                ExpectedConstants = new List<int> {1, 2},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpSetGlobal, new List<int> {0}),
+                    Code.Make(Opcode.OpConstant, new List<int> {1}),
+                    Code.Make(Opcode.OpSetGlobal, new List<int> {1})
+                }
+            },
+            new()
+            {
+                Input = @"let one = 1; 
+                        one;",
+                ExpectedConstants = new List<int> {1},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpSetGlobal, new List<int> {0}),
+                    Code.Make(Opcode.OpGetGlobal, new List<int> {0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = @"let one = 1; 
+                        let two = one;
+                        two;",
+                ExpectedConstants = new List<int> {1},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpSetGlobal, new List<int> {0}),
+                    Code.Make(Opcode.OpGetGlobal, new List<int> {0}),
+                    Code.Make(Opcode.OpSetGlobal, new List<int> {1}),
+                    Code.Make(Opcode.OpGetGlobal, new List<int> {1}),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
     [Test]
     public void TestConditionals()
     {

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Monkey.Core.AST;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
@@ -11,7 +10,31 @@ namespace Monkey.Test;
 
 public class VmTest
 {
-
+    [Test]
+    public void TestGlobalLetStatements()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = "let one = 1; one", Expected = 1
+            },
+            new()
+            {
+                Input = "let one = 1; let two = 2; one + two", Expected = 3
+            },
+            new()
+            {
+                Input = "let one = 1; let two = one + one; one + two", Expected = 3
+            },
+            new()
+            {
+                Input = "let one = 1; let two = 2; let three = one + two; three", Expected = 3
+            }
+        };
+        
+        RunVmTests(tests);
+    }
     [Test]
     public void TestConditionals()
     {

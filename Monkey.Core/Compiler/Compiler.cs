@@ -14,6 +14,7 @@ public class Compiler
     private EmittedInstruction _lastInstruction;
     private EmittedInstruction _previousInstruction;
 
+    private SymbolTable _symbolTable;
     public Compiler()
     {
         _instructions = new();
@@ -21,6 +22,14 @@ public class Compiler
 
         _lastInstruction = new EmittedInstruction();
         _previousInstruction = new EmittedInstruction();
+        
+        _symbolTable = new SymbolTable();
+    }
+
+    public Compiler(SymbolTable s, List<Object.Object> constants) : this()
+    {
+        _symbolTable = s;
+        _constants = constants;
     }
 
     public string? Compile(Node node)
@@ -107,6 +116,29 @@ public class Compiler
             }
 
             Emit(Opcode.OpPop);
+        }
+
+        if (node is LetStatement let)
+        {
+            var err = Compile(let.Value);
+            if (err is not null)
+            {
+                return err;
+            }
+
+            var symbol = _symbolTable.Define(let.Name.Value);
+            Emit(Opcode.OpSetGlobal, new List<int>{symbol.Index});
+        }
+
+        if (node is Identifier ident)
+        {
+            var (symbol, ok) = _symbolTable.Resolve(ident.Value);
+            if (!ok)
+            {
+                return $"undefined variable {ident.Value}";
+            }
+
+            if (symbol != null) Emit(Opcode.OpGetGlobal, new List<int> {symbol.Value.Index});
         }
 
         if (node is InfixExpression infExpr)

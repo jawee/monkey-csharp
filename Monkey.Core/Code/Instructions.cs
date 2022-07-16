@@ -1,5 +1,4 @@
 using System.Text;
-using Monkey.Core.Object;
 
 namespace Monkey.Core.Code;
 public class Instructions : List<byte>

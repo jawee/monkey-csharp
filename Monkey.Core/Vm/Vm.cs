@@ -9,6 +9,8 @@ namespace Monkey.Core.Vm;
 public class Vm
 {
     private const int StackSize = 2048;
+    private const int GlobalsSize = 65536;
+    
     private readonly Boolean TRUE = new() {Value = true};
     private readonly Boolean FALSE = new() {Value = false};
     public static readonly Null NULL = new Null();
@@ -17,6 +19,8 @@ public class Vm
     public Object.Object[] Stack { get; set; }
     public int sp { get; set; }
 
+    private Object.Object[] Globals;
+
     public Vm(Bytecode bytecode)
     {
         Instructions = bytecode.Instructions;
@@ -24,6 +28,13 @@ public class Vm
 
         Stack = new Object.Object[StackSize];
         sp = 0;
+
+        Globals = new Object.Object[GlobalsSize];
+    }
+
+    public Vm(Bytecode bytecode, List<Object.Object> s) : this(bytecode)
+    {
+        Globals = s.ToArray();
     }
 
     public string? Run()
@@ -125,6 +136,28 @@ public class Vm
                         return err;
                     }
 
+                    break;
+                case Opcode.OpSetGlobal:
+                    var inst = new Instructions();
+                    var list = Instructions.GetRange(ip + 1, Instructions.Count - ip - 1);
+                    inst.AddRange(list);
+                    var globalIndex = Code.Code.ReadUint16(inst);
+                    ip += 2;
+
+                    Globals[globalIndex] = Pop();
+                    break;
+                case Opcode.OpGetGlobal:
+                    var instructs = new Instructions();
+                    var newlist = Instructions.GetRange(ip + 1, Instructions.Count - ip - 1);
+                    instructs.AddRange(newlist);
+                    var glblIdx = Code.Code.ReadUint16(instructs);
+                    ip += 2;
+
+                    err = Push(Globals[glblIdx]);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
                     break;
             }
         }
