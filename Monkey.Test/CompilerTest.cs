@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Reflection.Emit;
 using Monkey.Core.AST;
 using Monkey.Core.Code;
 using Monkey.Core.Compiler;
@@ -9,6 +10,83 @@ namespace Monkey.Test;
 
 public class CompilerTest
 {
+    [Test]
+    public void TestConditionals()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = "if (true) { 10 }; 3333;",
+                ExpectedConstants = new List<int> {10, 3333},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    // 0000
+                    Code.Make(Opcode.OpTrue),
+                    // 0001
+                    Code.Make(Opcode.OpJumpNotTruthy, new List<int> {10}),
+                    // 0004
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    // 0007
+                    Code.Make(Opcode.OpJump, new List<int> {11}),
+                    // 0010
+                    Code.Make(Opcode.OpNull),
+                    // 0011
+                    Code.Make(Opcode.OpPop),
+                    // 0012
+                    Code.Make(Opcode.OpConstant, new List<int> {1}),
+                    // 0015
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "if (true) { 10 } else { 20 }; 3333;",
+                ExpectedConstants = new List<int> {10, 20, 3333},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    // 0000
+                    Code.Make(Opcode.OpTrue),
+                    // 0001
+                    Code.Make(Opcode.OpJumpNotTruthy, new List<int> {10}),
+                    // 0004
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    // 0007
+                    Code.Make(Opcode.OpJump, new List<int> {13}),
+                    // 0010
+                    Code.Make(Opcode.OpConstant, new List<int> {1}),
+                    // 0013
+                    Code.Make(Opcode.OpPop),
+                    // 0014
+                    Code.Make(Opcode.OpConstant, new List<int> {2}),
+                    // 0017
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "if (true) { 10 };",
+                ExpectedConstants = new List<int> {10},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    // 0000
+                    Code.Make(Opcode.OpTrue),
+                    // 0001
+                    Code.Make(Opcode.OpJumpNotTruthy, new List<int> {10}),
+                    // 0004
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    // 0007
+                    Code.Make(Opcode.OpJump, new List<int> {11}),
+                    // 0010
+                    Code.Make(Opcode.OpNull),
+                    // 0011
+                    Code.Make(Opcode.OpPop),
+                }
+            },
+        };
+        
+        RunCompilerTests(tests);
+    }
     [Test]
     public void TestBooleanExpressions()
     {
@@ -241,13 +319,13 @@ public class CompilerTest
         return null;
     }
 
-    private string? TestInstructions(List<Instructions> expected, List<byte> actual)
+    private string? TestInstructions(List<Instructions> expected, Instructions actual)
     {
         var concatted = ConcatInstructions(expected);
 
         if (actual.Count != concatted.Count)
         {
-            return $"wrong instructions length. Want '{concatted.Count}', Got '{actual.Count}'";
+            return $"wrong instructions length. Want \n'{concatted.String()}',\n Got \n'{actual.String()}'";
         }
 
         for (var i = 0; i < concatted.Count; i++)
@@ -255,16 +333,16 @@ public class CompilerTest
             var ins = concatted[i];
             if (actual[i] != ins)
             {
-                return $"wrong instruction at {i}. Want '{concatted}' Got '{actual}'";
+                return $"wrong instruction at {i}. Want '{concatted.String()}' Got '{actual.String()}'";
             }
         }
 
         return null;
     }
 
-    private List<byte> ConcatInstructions(List<Instructions> s)
+    private Instructions ConcatInstructions(List<Instructions> s)
     {
-        var res = new List<byte>();
+        var res = new Instructions();
 
         foreach (var ins in s)
         {

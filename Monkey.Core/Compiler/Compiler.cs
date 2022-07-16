@@ -1,3 +1,4 @@
+using System.Reflection.Emit;
 using Monkey.Core.AST;
 using Monkey.Core.Code;
 using Monkey.Core.Object;
@@ -10,10 +11,16 @@ public class Compiler
     private Instructions _instructions;
     private List<Object.Object> _constants;
 
+    private EmittedInstruction _lastInstruction;
+    private EmittedInstruction _previousInstruction;
+
     public Compiler()
     {
         _instructions = new();
         _constants = new();
+
+        _lastInstruction = new EmittedInstruction();
+        _previousInstruction = new EmittedInstruction();
     }
 
     public string? Compile(Node node)
@@ -22,6 +29,67 @@ public class Compiler
         {
             foreach (var s in p.Statements)
             {
+                var err = Compile(s);
+                if (err is not null)
+                {
+                    return err;
+                }
+            }
+        }
+
+        if (node is IfExpression ifExpr)
+        {
+            var err = Compile(ifExpr.Condition);
+            if (err is not null)
+            {
+                return err;
+            }
+
+            var jumpNotTruthyPos = Emit(Opcode.OpJumpNotTruthy, new List<int> {9999});
+
+            err = Compile(ifExpr.Consequence);
+            if (err is not null)
+            {
+                return err;
+            }
+
+            if (LastInstructionIsPop())
+            {
+                RemoveLastPop();
+            }
+
+            var jumpPos = Emit(Opcode.OpJump, new List<int> {9999});
+
+            var afterConsequencePos = _instructions.Count;
+            ChangeOperand(jumpNotTruthyPos, afterConsequencePos);
+            
+            if (ifExpr.Alternative is null)
+            {
+                Emit(Opcode.OpNull);
+            }
+            else
+            {
+                err = Compile(ifExpr.Alternative);
+                if (err is not null)
+                {
+                    return err;
+                }
+
+                if (LastInstructionIsPop())
+                {
+                    RemoveLastPop();
+                }
+            }
+
+            var afterAlternativePos = _instructions.Count;
+            ChangeOperand(jumpPos, afterAlternativePos);
+        }
+
+        if (node is BlockStatement block)
+        {
+            for (var i = 0; i < block.Statements.Count; i++)
+            {
+                var s = block.Statements[i];
                 var err = Compile(s);
                 if (err is not null)
                 {
@@ -146,6 +214,17 @@ public class Compiler
         return null;
     }
 
+    private void RemoveLastPop()
+    {
+        _instructions.RemoveRange(_lastInstruction.Position.Value, _instructions.Count-_lastInstruction.Position.Value);
+        _lastInstruction = _previousInstruction;
+    }
+
+    private bool LastInstructionIsPop()
+    {
+        return _lastInstruction.Opcode == Opcode.OpPop;
+    }
+
     private int AddConstant(Object.Object obj)
     {
         _constants.Add(obj);
@@ -156,14 +235,41 @@ public class Compiler
     {
         var ins = Code.Code.Make(op, operands);
         var pos = AddInstruction(ins);
+
+        SetLastInstruction(op, pos);
         return pos;
+    }
+
+    private void SetLastInstruction(Opcode op, int pos)
+    {
+        var previous = _lastInstruction;
+        var last = new EmittedInstruction {Opcode = op, Position = pos};
+
+        _previousInstruction = previous;
+        _lastInstruction = last;
     }
 
     private int AddInstruction(Instructions ins)
     {
-        var posNewInstruction = ins.Count;
+        var posNewInstruction = _instructions.Count;
         _instructions.AddRange(ins);
         return posNewInstruction;
+    }
+
+    private void ReplaceInstructions(int pos, Instructions newInstruction)
+    {
+        for (var i = 0; i < newInstruction.Count; i++)
+        {
+            _instructions[pos + i] = newInstruction[i];
+        }
+    }
+
+    private void ChangeOperand(int opPos, int operand)
+    {
+        var op = (Opcode) _instructions[opPos];
+        var newInstruction = Code.Code.Make(op, new List<int> {operand});
+        
+        ReplaceInstructions(opPos, newInstruction);
     }
 
     public Bytecode Bytecode()

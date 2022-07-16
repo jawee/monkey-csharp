@@ -17,7 +17,10 @@ public enum Opcode : byte
     OpNotEqual,
     OpGreaterThan,
     OpMinus,
-    OpBang
+    OpBang,
+    OpJumpNotTruthy,
+    OpJump,
+    OpNull
 }
 
 public class Code
@@ -37,6 +40,9 @@ public class Code
         {Opcode.OpGreaterThan, new Definition { Name = "OpGreaterThan", OperandWidths = new List<int> {}}},
         {Opcode.OpMinus, new Definition { Name = "OpMinus", OperandWidths = new List<int> {}}},
         {Opcode.OpBang, new Definition { Name = "OpBang", OperandWidths = new List<int> {}}},
+        {Opcode.OpJumpNotTruthy, new Definition { Name = "OpJumpNotTruthy", OperandWidths = new List<int> {2}}},
+        {Opcode.OpJump, new Definition { Name = "OpJump", OperandWidths = new List<int> {2}}},
+        {Opcode.OpNull, new Definition { Name = "OpNull", OperandWidths = new List<int>{}}}
     };
 
     public static (Definition?, string?) Lookup(Opcode op)
@@ -121,6 +127,10 @@ public class Code
 
     public static UInt16 ReadUint16(Instructions ins)
     {
+        if (ins.Count == 1)
+        {
+            ins.Add(0);
+        }
         var val = BitConverter.ToUInt16(ins.ToArray(), 0);
         return val;
     }

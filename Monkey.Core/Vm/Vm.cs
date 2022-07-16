@@ -11,6 +11,7 @@ public class Vm
     private const int StackSize = 2048;
     private readonly Boolean TRUE = new() {Value = true};
     private readonly Boolean FALSE = new() {Value = false};
+    public static readonly Null NULL = new Null();
     public List<Object.Object> Constants { get; set; }
     public Instructions Instructions { get; set; }
     public Object.Object[] Stack { get; set; }
@@ -48,7 +49,7 @@ public class Vm
                    }
                     break;
                case Opcode.OpConstant:
-                   var bytes = Instructions.GetRange(ip+1, Instructions.Count - ip - 1);
+                   var bytes = Instructions.GetRange(ip+1, Instructions.Count-ip-1);
                    var newInstr = new Instructions();
                    newInstr.AddRange(bytes);
                    var constIndex = Code.Code.ReadUint16(newInstr);
@@ -98,10 +99,52 @@ public class Vm
                    }
 
                    break;
+               case Opcode.OpJump:
+                   var instr = new Instructions();
+                   instr.AddRange(Instructions.GetRange(ip+1, Instructions.Count-ip-1));
+                   var position = (int) Code.Code.ReadUint16(instr);
+                   ip = position-1;
+
+                   break;
+               case Opcode.OpJumpNotTruthy:
+                   var nInstr = new Instructions();
+                   nInstr.AddRange(Instructions.GetRange(ip+1, Instructions.Count-ip-1));
+                   var pos = (int) Code.Code.ReadUint16(nInstr);
+                   ip += 2;
+                   
+                   var condition = Pop();
+                   if (!IsTruthy(condition))
+                   {
+                       ip = pos - 1;
+                   }
+                   break;
+                case Opcode.OpNull:
+                    err = Push(NULL);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+
+                    break;
             }
         }
 
         return null;
+    }
+
+    private static bool IsTruthy(Object.Object obj)
+    {
+        if (obj is Boolean b)
+        {
+            return b.Value;
+        }
+
+        if (obj is Null)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private string? ExecuteMinusOperator()
@@ -123,15 +166,17 @@ public class Vm
         {
             if (b.Value)
             {
-                Push(FALSE);
-                return null;
+                return Push(FALSE);
             }
-            Push(TRUE);
-            return null;
+            return Push(TRUE);
         }
 
-        Push(FALSE);
-        return null;
+        if (operand is Null n)
+        {
+            return Push(TRUE);
+        }
+
+        return Push(FALSE);
     }
 
     private string? ExecuteComparison(Opcode op)

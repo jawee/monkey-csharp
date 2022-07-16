@@ -1,4 +1,5 @@
-using Microsoft.VisualBasic;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Monkey.Core.AST;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
@@ -10,6 +11,56 @@ namespace Monkey.Test;
 
 public class VmTest
 {
+
+    [Test]
+    public void TestConditionals()
+    {
+        var tests = new VmTestCase[] 
+        {
+            new()
+            {
+                Input = "if (true) { 10 }", Expected = 10
+            },
+            new()
+            {
+                Input = "if (true) { 10 } else { 20 }", Expected = 10
+            },
+            new()
+            {
+                Input = "if (false) { 10 } else { 20 } ", Expected = 20
+            },
+            new()
+            {
+                Input = "if (1) { 10 }", Expected = 10
+            },
+            new()
+            {
+                Input = "if (1 < 2) { 10 }", Expected = 10
+            },
+            new()
+            {
+                Input = "if (1 < 2) { 10 } else { 20 }", Expected = 10
+            },
+            new()
+            {
+                Input = "if (1 > 2) { 10 } else { 20}", Expected = 20
+            },
+            new()
+            {
+                Input = "if (1 > 2) { 10 }", Expected = Vm.NULL,
+            },
+            new()
+            {
+                Input = "if (false) { 10 }", Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = "if ((if (false) { 10 })) { 10 } else { 20 }", Expected = 20
+            }
+        };
+        
+        RunVmTests(tests);
+    }
     [Test]
     public void TestBooleanExpressions()
     {
@@ -135,6 +186,10 @@ public class VmTest
                 Input = "!!5",
                 Expected = true
             },
+            new()
+            {
+                Input = "!(if (false) { 5; })", Expected = true
+            },
         };
         
         RunVmTests(tests);
@@ -232,6 +287,7 @@ public class VmTest
     {
         foreach (var tt in tests)
         {
+            Console.WriteLine($"{JsonSerializer.Serialize(tt)}");
             var program = Parse(tt.Input);
 
             var comp = new Compiler();
@@ -272,6 +328,14 @@ public class VmTest
             if (err is not null)
             {
                 Assert.Fail($"TestBooleanObject failed: {err}");
+            }
+        }
+
+        if (expected is Null n)
+        {
+            if (actual is not Null)
+            {
+                Assert.Fail($"object is not Null: {actual.Type()}");
             }
         }
     }
