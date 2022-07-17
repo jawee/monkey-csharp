@@ -12,6 +12,56 @@ namespace Monkey.Test;
 public class VmTest
 {
     [Test]
+    public void TestIndexExpressions()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = "[1, 2, 3][1]", Expected = 2
+            },
+            new()
+            {
+                Input = "[1, 2, 3][0 + 2]", Expected = 3
+            },
+            new()
+            {
+                Input = "[[1, 1, 1]][0][0]", Expected = 1
+            },
+            new()
+            {
+                Input = "[][0]", Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = "[1, 2, 3][99]", Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = "[1][-1]", Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = "{1: 1, 2: 2}[1]", Expected = 1
+            },
+            new()
+            {
+                Input = "{1: 1, 2: 2}[2]", Expected = 2
+            },
+            new()
+            {
+                Input = "{1: 1}[0]", Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = "{}[0]", Expected = Vm.NULL
+            }
+        };
+        
+        RunVmTests(tests);
+    }
+    
+    [Test]
     public void TestHashLiterals()
     {
 

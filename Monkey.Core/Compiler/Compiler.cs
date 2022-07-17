@@ -292,6 +292,23 @@ public class Compiler
 
             Emit(Opcode.OpHash, new() {has.Pairs.Count * 2});
         }
+
+        if (node is IndexExpression indExpr)
+        {
+            var err = Compile(indExpr.Left);
+            if (err is not null)
+            {
+                return err;
+            }
+
+            err = Compile(indExpr.Index);
+            if (err is not null)
+            {
+                return err;
+            }
+
+            Emit(Opcode.OpIndex);
+        }
         
         return null;
     }

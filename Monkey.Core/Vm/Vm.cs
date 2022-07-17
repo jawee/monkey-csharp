@@ -2,6 +2,7 @@ using System.Reflection.Emit;
 using Monkey.Core.Code;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
+using Array = Monkey.Core.Object.Array;
 using Boolean = Monkey.Core.Object.Boolean;
 using String = Monkey.Core.Object.String;
 
@@ -198,10 +199,69 @@ public class Vm
                     }
                     
                     break;
+                case Opcode.OpIndex:
+                    var index = Pop();
+                    var left = Pop();
+
+                    err = ExecuteIndexExpression(left, index);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+                    break;
             }
         }
 
         return null;
+    }
+
+    private string? ExecuteIndexExpression(Object.Object left, Object.Object index)
+    {
+        if (left.Type().Equals(ObjectType.ARRAY_OBJ) && index.Type().Equals(ObjectType.INTEGER_OBJ))
+        {
+            return ExecuteArrayIndex(left, index);
+        }
+
+        if (left.Type().Equals(ObjectType.HASH_OBJ))
+        {
+            return ExecuteHashIndex(left, index);
+        }
+
+        return $"index operator not supported: {left.Type()}";
+    }
+
+    private string? ExecuteHashIndex(Object.Object hash, Object.Object index)
+    {
+        var hashObject = hash as Hash;
+        
+        if (index is not Hashable key)
+        {
+            return $"unusable as hash key: {index.Type()}";
+        }
+
+        if (!hashObject.Pairs.ContainsKey(key.HashKey()))
+        {
+            return Push(NULL);
+        }
+
+        var pair = hashObject.Pairs[key.HashKey()];
+
+        return Push(pair.Value);
+    }
+
+    private string? ExecuteArrayIndex(Object.Object array, Object.Object index)
+    {
+        var arrayObject = array as Array;
+
+        var i = (index as Integer).Value;
+        var max = arrayObject.Elements.Count - 1;
+
+        if (i < 0 || i > max)
+        {
+            return Push(NULL);
+        }
+
+        return Push(arrayObject.Elements[i]);
     }
 
     private (Object.Object?, string?)  BuildHash(int startIndex, int endIndex)

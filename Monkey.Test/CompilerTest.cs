@@ -10,6 +10,48 @@ namespace Monkey.Test;
 public class CompilerTest
 {
     [Test]
+    public void TestIndexExpressions()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = "[1, 2, 3][1 + 1]",
+                ExpectedConstants = new() {1, 2, 3, 1, 1},
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpArray, new() {3}),
+                    Code.Make(Opcode.OpConstant, new() {3}),
+                    Code.Make(Opcode.OpConstant, new() {4}),
+                    Code.Make(Opcode.OpAdd),
+                    Code.Make(Opcode.OpIndex),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "{1: 2}[2 - 1]",
+                ExpectedConstants = new() {1, 2, 2, 1},
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpHash, new() {2}),
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpConstant, new() {3}),
+                    Code.Make(Opcode.OpSub),
+                    Code.Make(Opcode.OpIndex),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
+    [Test]
     public void TestHashLiterals()
     {
         var tests = new List<CompilerTestCase>
