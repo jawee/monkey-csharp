@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Monkey.Core.AST;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
@@ -12,6 +11,38 @@ namespace Monkey.Test;
 
 public class VmTest
 {
+    [Test]
+    public void TestHashLiterals()
+    {
+
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = "{}", Expected = new Dictionary<HashKey, int> { }
+            },
+            new()
+            {
+                Input = "{1: 2, 2: 3}",
+                Expected = new Dictionary<HashKey, int>()
+                {
+                    {(new Integer {Value = 1}).HashKey(), 2},
+                    {(new Integer {Value = 2}).HashKey(), 3}
+                }
+            },
+            new()
+            {
+                Input = "{1 + 1: 2 * 2, 3 + 3: 4 * 4}",
+                Expected = new Dictionary<HashKey, int>
+                {
+                    {(new Integer {Value = 2}).HashKey(), 4},
+                    {(new Integer {Value = 6}).HashKey(), 16}
+                }
+            }
+        };
+        
+        RunVmTests(tests);
+    }
     [Test]
     public void TestArrayLiterals()
     {
@@ -435,6 +466,34 @@ public class VmTest
             {
                 var exepctedElem = arr[i];
                 var err = TestIntegerObject(exepctedElem, arrObj.Elements[i]);
+                if (err is not null)
+                {
+                    Assert.Fail($"TestIntegerObject failed: {err}");
+                }
+            }
+        }
+
+        if (expected is Dictionary<HashKey, int> dict)
+        {
+            if (actual is not Hash hash)
+            {
+                Assert.Fail($"object is not Hash. Got {actual}");
+                return;
+            }
+
+            if (hash.Pairs.Count != dict.Count)
+            {
+                Assert.Fail($"hash has wrong number of Pairs. want={dict.Count}, got={hash.Pairs.Count}");
+            }
+
+            foreach (var (expectedKey, expectedValue) in dict)
+            {
+                if (!hash.Pairs.ContainsKey(expectedKey))
+                {
+                    Assert.Fail($"no pair for given key in Pairs");
+                }
+
+                var err = TestIntegerObject(expectedValue, hash.Pairs[expectedKey].Value);
                 if (err is not null)
                 {
                     Assert.Fail($"TestIntegerObject failed: {err}");

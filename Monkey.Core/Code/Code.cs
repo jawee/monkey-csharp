@@ -23,7 +23,8 @@ public enum Opcode : byte
     OpNull,
     OpGetGlobal,
     OpSetGlobal,
-    OpArray
+    OpArray,
+    OpHash
 }
 
 public class Code
@@ -49,6 +50,7 @@ public class Code
         {Opcode.OpGetGlobal, new Definition { Name = "OpGetGlobal", OperandWidths = new List<int> {2}}},
         {Opcode.OpSetGlobal, new Definition { Name = "OpSetGlobal", OperandWidths = new List<int> {2}}},
         {Opcode.OpArray, new Definition { Name = "OpArray", OperandWidths = new List<int> {2}}},
+        {Opcode.OpHash, new Definition { Name = "OpHash", OperandWidths = new List<int> {2}}},
     };
 
     public static (Definition?, string?) Lookup(Opcode op)

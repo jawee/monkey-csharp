@@ -263,6 +263,35 @@ public class Compiler
 
             Emit(Opcode.OpArray, new() {arrLit.Elements.Count});
         }
+
+        if (node is HashLiteral has)
+        {
+            var keys = new List<Expression>();
+            foreach (var (k, v) in has.Pairs)
+            {
+                keys.Add(k);
+            }
+
+            keys = keys.OrderBy(x => x.String()).ToList();
+
+            for (var i = 0; i < keys.Count; i++)
+            {
+                var k = keys[i];
+                var err = Compile(k);
+                if (err is not null)
+                {
+                    return err;
+                }
+
+                err = Compile(has.Pairs[k]);
+                if (err is not null)
+                {
+                    return err;
+                }
+            }
+
+            Emit(Opcode.OpHash, new() {has.Pairs.Count * 2});
+        }
         
         return null;
     }

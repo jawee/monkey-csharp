@@ -176,10 +176,54 @@ public class Vm
                         return err;
                     }
                     break;
+                case Opcode.OpHash:
+                    newlist = Instructions.GetRange(ip + 1, Instructions.Count - ip - 1);
+                    inst = new Instructions();
+                    inst.AddRange(newlist);
+                    numElements = Code.Code.ReadUint16(inst);
+                    ip += 2;
+
+                    var (hash, error) = BuildHash(sp - numElements, sp);
+                    if (error is not null)
+                    {
+                        return error;
+                    }
+
+                    sp = sp - numElements;
+
+                    err = Push(hash);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+                    
+                    break;
             }
         }
 
         return null;
+    }
+
+    private (Object.Object?, string?)  BuildHash(int startIndex, int endIndex)
+    {
+        var hashedPairs = new Dictionary<HashKey, HashPair>();
+
+        for (var i = startIndex; i < endIndex; i += 2)
+        {
+            var key = Stack[i];
+            var value = Stack[i + 1];
+
+            var pair = new HashPair {Key = key, Value = value};
+
+            if (key is not Hashable hashKey)
+            {
+                return (null, $"unusable as hash key: {key.Type()}");
+            }
+            
+            hashedPairs.Add(hashKey.HashKey(), pair);
+        }
+
+        return (new Hash {Pairs = hashedPairs}, null);
     }
 
     private Object.Object BuildArray(int startIndex, int endIndex)

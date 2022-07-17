@@ -10,6 +10,60 @@ namespace Monkey.Test;
 public class CompilerTest
 {
     [Test]
+    public void TestHashLiterals()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = "{}",
+                ExpectedConstants = new(),
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpHash, new() {0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "{1: 2, 3: 4, 5: 6}",
+                ExpectedConstants = new() {1, 2, 3, 4, 5, 6},
+                ExpectedInstructions = new()
+                {
+                   Code.Make(Opcode.OpConstant, new() {0}),
+                   Code.Make(Opcode.OpConstant, new() {1}),
+                   Code.Make(Opcode.OpConstant, new() {2}),
+                   Code.Make(Opcode.OpConstant, new() {3}),
+                   Code.Make(Opcode.OpConstant, new() {4}),
+                   Code.Make(Opcode.OpConstant, new() {5}),
+                   Code.Make(Opcode.OpHash, new() {6}),
+                   Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "{1: 2 + 3, 4: 5 * 6}",
+                ExpectedConstants = new() {1, 2, 3, 4, 5, 6},
+                ExpectedInstructions = new()
+                {
+                    
+                   Code.Make(Opcode.OpConstant, new() {0}),
+                   Code.Make(Opcode.OpConstant, new() {1}),
+                   Code.Make(Opcode.OpConstant, new() {2}),
+                   Code.Make(Opcode.OpAdd),
+                   Code.Make(Opcode.OpConstant, new() {3}),
+                   Code.Make(Opcode.OpConstant, new() {4}),
+                   Code.Make(Opcode.OpConstant, new() {5}),
+                   Code.Make(Opcode.OpMul),
+                   Code.Make(Opcode.OpHash, new() {4}),
+                   Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
+    [Test]
     public void TestArrayLiterals()
     {
         var tests = new List<CompilerTestCase>
