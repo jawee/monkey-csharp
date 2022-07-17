@@ -3,6 +3,7 @@ using Monkey.Core.AST;
 using Monkey.Core.Code;
 using Monkey.Core.Object;
 using Boolean = Monkey.Core.AST.Boolean;
+using String = Monkey.Core.Object.String;
 
 namespace Monkey.Core.Compiler;
 
@@ -241,6 +242,26 @@ public class Compiler
                default:
                    return $"unknown operator {pExpr.Operator}";
             }
+        }
+
+        if (node is StringLiteral strLit)
+        {
+            var str = new String {Value = strLit.Value};
+            Emit(Opcode.OpConstant, new List<int> {AddConstant(str)});
+        }
+
+        if (node is ArrayLiteral arrLit)
+        {
+            foreach (var el in arrLit.Elements)
+            {
+                var err = Compile(el);
+                if (err is not null)
+                {
+                    return err;
+                }
+            }
+
+            Emit(Opcode.OpArray, new() {arrLit.Elements.Count});
         }
         
         return null;

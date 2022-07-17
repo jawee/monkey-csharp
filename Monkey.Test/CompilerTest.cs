@@ -3,11 +3,94 @@ using Monkey.Core.Code;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
 using Object = Monkey.Core.Object.Object;
+using String = Monkey.Core.Object.String;
 
 namespace Monkey.Test;
 
 public class CompilerTest
 {
+    [Test]
+    public void TestArrayLiterals()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = "[]",
+                ExpectedConstants = new List<object>(),
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpArray, new List<int> {0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "[1, 2, 3]",
+                ExpectedConstants = new() {1, 2, 3},
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpArray, new() {3}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "[1 + 2, 3 - 4, 5 * 6]",
+                ExpectedConstants = new() {1, 2, 3, 4, 5, 6},
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpAdd),
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpConstant, new() {3}),
+                    Code.Make(Opcode.OpSub),
+                    Code.Make(Opcode.OpConstant, new() {4}),
+                    Code.Make(Opcode.OpConstant, new() {5}),
+                    Code.Make(Opcode.OpMul),
+                    Code.Make(Opcode.OpArray, new() {3}),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
+    [Test]
+    public void TestStringExpressions()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = @"""monkey""",
+                ExpectedConstants = new List<object> {"monkey"},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = @"""mon"" + ""key""",
+                ExpectedConstants = new List<object> {"mon", "key"},
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new List<int> {0}),
+                    Code.Make(Opcode.OpConstant, new List<int> {1}),
+                    Code.Make(Opcode.OpAdd),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
     [Test]
     public void TestDefine()
     {
@@ -68,7 +151,7 @@ public class CompilerTest
             {
                 Input = @"let one = 1;
                         let two = 2;",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpConstant, new List<int> {0}),
@@ -81,7 +164,7 @@ public class CompilerTest
             {
                 Input = @"let one = 1; 
                         one;",
-                ExpectedConstants = new List<int> {1},
+                ExpectedConstants = new List<object> {1},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpConstant, new List<int> {0}),
@@ -95,7 +178,7 @@ public class CompilerTest
                 Input = @"let one = 1; 
                         let two = one;
                         two;",
-                ExpectedConstants = new List<int> {1},
+                ExpectedConstants = new List<object> {1},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpConstant, new List<int> {0}),
@@ -118,7 +201,7 @@ public class CompilerTest
             new()
             {
                 Input = "if (true) { 10 }; 3333;",
-                ExpectedConstants = new List<int> {10, 3333},
+                ExpectedConstants = new List<object> {10, 3333},
                 ExpectedInstructions = new List<Instructions>
                 {
                     // 0000
@@ -142,7 +225,7 @@ public class CompilerTest
             new()
             {
                 Input = "if (true) { 10 } else { 20 }; 3333;",
-                ExpectedConstants = new List<int> {10, 20, 3333},
+                ExpectedConstants = new List<object> {10, 20, 3333},
                 ExpectedInstructions = new List<Instructions>
                 {
                     // 0000
@@ -166,7 +249,7 @@ public class CompilerTest
             new()
             {
                 Input = "if (true) { 10 };",
-                ExpectedConstants = new List<int> {10},
+                ExpectedConstants = new List<object> {10},
                 ExpectedInstructions = new List<Instructions>
                 {
                     // 0000
@@ -195,7 +278,7 @@ public class CompilerTest
             new()
             {
                 Input = "true",
-                ExpectedConstants = new List<int>(),
+                ExpectedConstants = new List<object>(),
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpTrue),
@@ -205,7 +288,7 @@ public class CompilerTest
             new()
             {
                 Input = "false",
-                ExpectedConstants = new List<int>(),
+                ExpectedConstants = new List<object>(),
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpFalse),
@@ -215,7 +298,7 @@ public class CompilerTest
             new()
             {
                 Input = "1 > 2",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpConstant, new List<int> {0}),
@@ -227,7 +310,7 @@ public class CompilerTest
             new()
             {
                 Input = "1 < 2",
-                ExpectedConstants = new List<int> {2, 1},
+                ExpectedConstants = new List<object> {2, 1},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpConstant, new List<int> {0}),
@@ -239,7 +322,7 @@ public class CompilerTest
             new()
             {
                 Input = "1 == 2",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpConstant, new List<int> {0}),
@@ -251,7 +334,7 @@ public class CompilerTest
             new()
             {
                 Input = "1 != 2",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpConstant, new List<int> {0}),
@@ -263,7 +346,7 @@ public class CompilerTest
             new()
             {
                 Input = "true == false",
-                ExpectedConstants = new List<int> {},
+                ExpectedConstants = new List<object> {},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpTrue),
@@ -275,7 +358,7 @@ public class CompilerTest
             new()
             {
                 Input = "true != false",
-                ExpectedConstants = new List<int> {},
+                ExpectedConstants = new List<object> {},
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpTrue),
@@ -287,7 +370,7 @@ public class CompilerTest
             new()
             {
                 Input = "!true",
-                ExpectedConstants = new List<int>(),
+                ExpectedConstants = new List<object>(),
                 ExpectedInstructions = new List<Instructions>
                 {
                     Code.Make(Opcode.OpTrue),
@@ -302,7 +385,7 @@ public class CompilerTest
     private struct CompilerTestCase
     {
         public string Input { get; set; }
-        public List<int> ExpectedConstants { get; set; }
+        public List<object> ExpectedConstants { get; set; }
         public List<Instructions> ExpectedInstructions { get; set; }
     }
     [Test]
@@ -313,37 +396,37 @@ public class CompilerTest
             new()
             {
                 Input = "1 + 2",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpAdd), Code.Make(Opcode.OpPop)}
             },
             new()
             {
                 Input = "1; 2",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpPop), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpPop)}
             },
             new()
             {
                 Input = "1 - 2",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpSub), Code.Make(Opcode.OpPop)}
             },
             new()
             {
                 Input = "1 * 2",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpMul), Code.Make(Opcode.OpPop)}
             },
             new()
             {
                 Input = "1 / 2",
-                ExpectedConstants = new List<int> {1, 2},
+                ExpectedConstants = new List<object> {1, 2},
                 ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpConstant, new List<int> {1}), Code.Make(Opcode.OpDiv), Code.Make(Opcode.OpPop)}
             },
             new()
             {
                 Input = "-1",
-                ExpectedConstants = new List<int> {1},
+                ExpectedConstants = new List<object> {1},
                 ExpectedInstructions = new List<Instructions> {Code.Make(Opcode.OpConstant, new List<int> {0}), Code.Make(Opcode.OpMinus), Code.Make(Opcode.OpPop)}
             }
         };
@@ -381,7 +464,7 @@ public class CompilerTest
         }
     }
 
-    private string? TestConstants(List<int> expected, List<Object> actual)
+    private string? TestConstants(List<object> expected, List<Object> actual)
     {
         if (expected.Count != actual.Count)
         {
@@ -391,14 +474,38 @@ public class CompilerTest
         for (var i = 0; i < expected.Count; i++)
         {
             var constant = expected[i];
-            if (constant is int)
+            if (constant is int number)
             {
-                var err = TestIntegerObject(constant, actual[i]);
+                var err = TestIntegerObject(number, actual[i]);
                 if (err is not null)
                 {
                     return $"constant {i} - TestIntegerObject failed: {err}";
                 }
             }
+
+            if (constant is string str)
+            {
+                var err = TestStringObject(str, actual[i]);
+                if (err is not null)
+                {
+                    return $"constant {i} - TestStringObjectFailed: {err}";
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private string? TestStringObject(string expected, Object actual)
+    {
+        if (actual is not String str)
+        {
+            return $"object is not string. got '{actual}'";
+        }
+
+        if (!str.Value.Equals(expected))
+        {
+            return $"object has wrong value. Got={str.Value} Want={expected}";
         }
 
         return null;

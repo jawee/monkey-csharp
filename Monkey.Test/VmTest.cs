@@ -3,13 +3,60 @@ using Monkey.Core.AST;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
 using Monkey.Core.Vm;
+using Array = Monkey.Core.Object.Array;
 using Boolean = Monkey.Core.Object.Boolean;
 using Object = Monkey.Core.Object.Object;
+using String = Monkey.Core.Object.String;
 
 namespace Monkey.Test;
 
 public class VmTest
 {
+    [Test]
+    public void TestArrayLiterals()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = "[]",
+                Expected = new int[] { }
+            },
+            new()
+            {
+                Input = "[1, 2, 3]",
+                Expected = new int[] {1, 2, 3}
+            },
+            new()
+            {
+                Input = "[1 + 2, 3 * 4, 5 + 6]",
+                Expected = new[] {3, 12, 11}
+            }
+        };
+        
+        RunVmTests(tests);
+    }
+    [Test]
+    public void TestStringExpressions()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = @"""monkey""", Expected = $"monkey"
+            },
+            new()
+            {
+                Input = @"""mon"" + ""key""", Expected = "monkey"
+            },
+            new()
+            {
+                Input = @"""mon"" + ""key"" + ""banana""", Expected = "monkeybanana"
+            }
+        };
+        
+        RunVmTests(tests);
+    }
     [Test]
     public void TestGlobalLetStatements()
     {
@@ -310,7 +357,7 @@ public class VmTest
     {
         foreach (var tt in tests)
         {
-            Console.WriteLine($"{JsonSerializer.Serialize(tt)}");
+            // Console.WriteLine($"{JsonSerializer.Serialize(tt)}");
             var program = Parse(tt.Input);
 
             var comp = new Compiler();
@@ -336,9 +383,9 @@ public class VmTest
 
     private void TestExpectedObject(object expected, Object actual)
     {
-        if (expected is int i)
+        if (expected is int integer)
         {
-            var err = TestIntegerObject(i, actual);
+            var err = TestIntegerObject(integer, actual);
             if (err is not null)
             {
                 Assert.Fail($"TestIntegerObject failed: {err}");
@@ -361,6 +408,54 @@ public class VmTest
                 Assert.Fail($"object is not Null: {actual.Type()}");
             }
         }
+
+        if (expected is string s)
+        {
+            var err = TestStringObject(s, actual);
+            if (err is not null)
+            {
+                Assert.Fail($"TestStringObject failed: {err}");
+            }
+        }
+
+        if (expected is int[] arr)
+        {
+            if (actual is not Array arrObj)
+            {
+                Assert.Fail($"object not Array: {actual}");
+                return;
+            }
+
+            if (arrObj.Elements.Count != arr.Length)
+            {
+                Assert.Fail($"wrong num of elements. want={arr.Length}, got={arrObj.Elements.Count}");
+            }
+
+            for (var i = 0; i < arr.Length; i++)
+            {
+                var exepctedElem = arr[i];
+                var err = TestIntegerObject(exepctedElem, arrObj.Elements[i]);
+                if (err is not null)
+                {
+                    Assert.Fail($"TestIntegerObject failed: {err}");
+                }
+            }
+        }
+    }
+
+    private string? TestStringObject(string expected, Object actual)
+    {
+        if (actual is not String str)
+        {
+            return $"object is not String. Got={actual}";
+        }
+
+        if (!str.Value.Equals(expected))
+        {
+            return $"object has wrong value. got={str.Value}, want={expected}";
+        }
+
+        return null;
     }
 
     private string? TestBooleanObject(bool expected, Object actual)

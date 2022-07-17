@@ -3,6 +3,7 @@ using Monkey.Core.Code;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
 using Boolean = Monkey.Core.Object.Boolean;
+using String = Monkey.Core.Object.String;
 
 namespace Monkey.Core.Vm;
 
@@ -159,10 +160,38 @@ public class Vm
                         return err;
                     }
                     break;
+                case Opcode.OpArray:
+                    newlist = Instructions.GetRange(ip + 1, Instructions.Count - ip - 1);
+                    inst = new Instructions();
+                    inst.AddRange(newlist);
+                    var numElements = Code.Code.ReadUint16(inst);
+                    ip += 2;
+
+                    var array = BuildArray(sp - numElements, sp);
+                    sp = sp - numElements;
+
+                    err = Push(array);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+                    break;
             }
         }
 
         return null;
+    }
+
+    private Object.Object BuildArray(int startIndex, int endIndex)
+    {
+        var elements = new Object.Object[endIndex - startIndex];
+
+        for (var i = startIndex; i < endIndex; i++)
+        {
+            elements[i - startIndex] = Stack[i];
+        }
+
+        return new Object.Array {Elements = elements.ToList()};
     }
 
     private static bool IsTruthy(Object.Object obj)
@@ -274,7 +303,25 @@ public class Vm
             return ExecuteBinaryIntegerOperation(op, left, right);
         }
 
+        if (leftType.Equals(ObjectType.STRING_OBJ) && rightType.Equals(ObjectType.STRING_OBJ))
+        {
+            return ExecuteBinaryStringOperation(op, left, right);
+        }
+
         return $"unsupported types for binary operation: {leftType} {rightType}";
+    }
+
+    private string? ExecuteBinaryStringOperation(Opcode op, Object.Object left, Object.Object right)
+    {
+        if (op != Opcode.OpAdd)
+        {
+            return $"unknown string operator: {op}";
+        }
+
+        var leftValue = (left as String).Value;
+        var rightValue = (right as String).Value;
+
+        return Push(new String {Value = leftValue + rightValue});
     }
 
     private string? ExecuteBinaryIntegerOperation(Opcode op, Object.Object left, Object.Object right)
