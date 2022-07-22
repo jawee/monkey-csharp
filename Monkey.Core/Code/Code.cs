@@ -25,7 +25,12 @@ public enum Opcode : byte
     OpSetGlobal,
     OpArray,
     OpHash,
-    OpIndex
+    OpIndex,
+    OpCall,
+    OpReturnValue,
+    OpReturn,
+    OpGetLocal,
+    OpSetLocal
 }
 
 public class Code
@@ -53,6 +58,11 @@ public class Code
         {Opcode.OpArray, new Definition { Name = "OpArray", OperandWidths = new List<int> {2}}},
         {Opcode.OpHash, new Definition { Name = "OpHash", OperandWidths = new List<int> {2}}},
         {Opcode.OpIndex, new Definition { Name = "OpIndex", OperandWidths = new List<int> {}}},
+        {Opcode.OpCall, new Definition { Name = "OpCall", OperandWidths = new List<int> {1}}},
+        {Opcode.OpReturnValue, new Definition { Name = "OpReturnValue", OperandWidths = new List<int> {}}},
+        {Opcode.OpReturn, new Definition { Name = "OpReturn", OperandWidths = new List<int> {}}},
+        {Opcode.OpGetLocal, new Definition { Name = "OpGetLocal", OperandWidths = new List<int> {1}}},
+        {Opcode.OpSetLocal, new Definition { Name = "OpSetLocal", OperandWidths = new List<int> {1}}},
     };
 
     public static (Definition?, string?) Lookup(Opcode op)
@@ -103,6 +113,16 @@ public class Code
                     Buffer.BlockCopy(source, 0, target, 0, source.Length * 2);
                     instruction.AddRange(target);
                     break; 
+                case 1:
+                    if (offset >= instruction.Count)
+                    {
+                        instruction.Add((byte)o);
+                    }
+                    else
+                    {
+                        instruction[offset] = (byte) o;
+                    }
+                    break;
             }
 
             offset += width;
@@ -124,6 +144,12 @@ public class Code
                 case 2:
                     var bytes = ins.GetRange(offset, ins.Count - offset);
                     var newInstr = new Instructions();
+                    newInstr.AddRange(bytes);
+                    operands[i] = ReadUint16(newInstr);
+                    break;
+                case 1:
+                    bytes = ins.GetRange(offset, ins.Count - offset);
+                    newInstr = new Instructions();
                     newInstr.AddRange(bytes);
                     operands[i] = ReadUint16(newInstr);
                     break;

@@ -14,6 +14,12 @@ public class CodeTest
                 Op = Opcode.OpConstant,
                 Operands = new List<int> {65535},
                 BytesRead = 2
+            },
+            new
+            {
+                Op = Opcode.OpGetLocal,
+                Operands = new List<int> {255},
+                BytesRead = 1
             }
         };
 
@@ -54,11 +60,12 @@ public class CodeTest
         var instructions = new List<Instructions>
         {
             Code.Make(Opcode.OpAdd, new List<int>()),
+            Code.Make(Opcode.OpGetLocal, new List<int> {1}),
             Code.Make(Opcode.OpConstant, new List<int>(){ 2 }),
             Code.Make(Opcode.OpConstant, new List<int>(){ 65535 })
         };
 
-        var expected = @"0000 OpAdd 0001 OpConstant 2 0004 OpConstant 65535";
+        var expected = @"0000 OpAdd 0001 OpGetLocal 1 0003 OpConstant 2 0006 OpConstant 65535";
 
         var concatted = new Instructions();
         foreach (var ins in instructions)
@@ -88,6 +95,12 @@ public class CodeTest
                 Op = Opcode.OpAdd,
                 Operands = new List<int>(),
                 Expected = new List<byte> {(byte) Opcode.OpAdd}
+            },
+            new
+            {
+                Op = Opcode.OpGetLocal,
+                Operands = new List<int> {255},
+                Expected = new List<byte> {(byte) Opcode.OpGetLocal, 255}
             }
         };
 

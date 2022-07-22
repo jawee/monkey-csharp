@@ -12,6 +12,214 @@ namespace Monkey.Test;
 public class VmTest
 {
     [Test]
+    public void TestCallingFunctionsWithWrongArguments()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = "fn() { 1; }(1);",
+                Expected = "wrong number of arguments: want=0, got=1"
+            },
+            new()
+            {
+                Input = "fn(a) { a; }();",
+                Expected = "wrong number of arguments: want=1, got=0"
+            },
+            new()
+            {
+                Input = "fn(a, b) { a + b; }(1);",
+                Expected = "wrong number of arguments: want=2, got=1"
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            var program = Parse(test.Input);
+
+            var comp = new Compiler();
+            var err = comp.Compile(program);
+            if (err is not null)
+            {
+                Assert.Fail($"compiler error: {err}");
+            }
+
+            var vm = new Vm(comp.Bytecode());
+            err = vm.Run();
+            if (err is null)
+            {
+                Assert.Fail($"expected VM error but resulted in none.");
+            }
+
+            if (!err.Equals(test.Expected))
+            {
+                Assert.Fail($"wrong VM error: want={test.Expected} got={err}");
+            }
+            
+        }
+    }
+    [Test]
+    public void TestCallingFunctionsWithArgumentsAndBindings()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = @"
+                        let identity = fn(a) { a; };
+                        identity(4);",
+                Expected = 4,
+            },
+            new()
+            {
+                Input = @"
+                        let sum = fn(a, b) { a + b; };
+                        sum(1, 2);",
+                Expected = 3
+
+            },
+            new()
+            {
+                Input = @"
+                        let sum = fn(a, b) {
+                            let c = a + b;
+                            c;
+                        };
+                        sum(1, 2);",
+                Expected = 3
+            },
+            new()
+            {
+                Input = @"let sum = fn(a, b) { 
+                    let c = a + b;
+                    c;
+                };
+                sum(1, 2) + sum(3, 4);",
+                Expected = 10
+            },
+            new()
+            {
+                Input = @"let sum = fn(a, b) { 
+                    let c = a + b;
+                    c;
+                };
+                let outer = fn() { 
+                    sum(1, 2) + sum(3, 4);
+                };
+                outer();",
+                Expected = 10
+            },
+            new()
+            {
+                Input = @"let globalNum = 10;
+                        let sum = fn(a, b) { 
+                            let c = a + b;
+                            c + globalNum;
+                        };
+                        let outer = fn() {
+                            sum(1, 2) + sum(3, 4) + globalNum;
+                        };
+                        outer() + globalNum;",
+                Expected = 50
+            }
+            
+        };
+        
+        RunVmTests(tests);
+    }
+    [Test]
+    public void TestCallingFunctionsWithBindings()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = "let one = fn() { let one = 1; one }; one();",
+                Expected = 1
+            },
+            new()
+            {
+                Input = "let oneAndTwo = fn() { let one = 1; let two = 2; one + two; }; oneAndTwo();",
+                Expected = 3
+            },
+            new()
+            {
+                Input = "let oneAndTwo = fn() { let one = 1; let two = 2; one + two; }; let threeAndFour = fn() { let three = 3; let four = 4; three + four; }; oneAndTwo() + threeAndFour();",
+                Expected = 10
+            },
+            new()
+            {
+                Input = "let firstFoobar = fn() { let foobar = 50; foobar; }; let secondFoobar = fn() { let foobar = 100; foobar; }; firstFoobar() + secondFoobar();",
+                Expected = 150
+            },
+            new()
+            {
+                Input = "let globalSeed = 50; let minusOne = fn() { let num = 1; globalSeed - num; }; let minusTwo = fn() { let num = 2; globalSeed - num; }; minusOne() + minusTwo();",
+                Expected = 97
+            }
+        };
+        
+        RunVmTests(tests);
+    }
+    
+    [Test]
+    public void TestFirstClassFunctions()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input =
+                    @"let returnsOne = fn() { 1; }; let returnsOneReturner = fn() { returnsOne; }; returnsOneReturner()();",
+                Expected = 1
+            }
+        };
+        
+        RunVmTests(tests);
+    }
+    [Test]
+    public void TestFunctionsWithoutReturnValue()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = @"let noReturn = fn() { }; noReturn();",
+                Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = @"let noReturn = fn() { }; let noReturnTwo = fn() { noReturn(); }; noReturn(); noReturnTwo();",
+                Expected = Vm.NULL
+            }
+        };
+
+        RunVmTests(tests);
+    }
+    [Test]
+    public void TestCallingFunctionsWithoutArguments()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = @"let fivePlusTen = fn() { 5 + 10; }; fivePlusTen();",
+                Expected = 15
+            },
+            new()
+            {
+                Input = @"let earlyExit = fn() { return 99; 100; }; earlyExit();",
+                Expected = 99
+            },
+            new()
+            {
+                Input = @"let earlyExit = fn() {return 99; return 100; }; earlyExit();",
+                Expected = 99
+            }
+        };
+        RunVmTests(tests);
+    }
+    [Test]
     public void TestIndexExpressions()
     {
         var tests = new VmTestCase[]

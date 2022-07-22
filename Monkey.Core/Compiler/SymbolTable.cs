@@ -1,33 +1,59 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace Monkey.Core.Compiler;
 
 public class SymbolScope
 {
     public static string GlobalScope = "GLOBAL";
+    public static string LocalScope = "LOCAL";
 }
 public struct Symbol
 {
     public string Name { get; set; }
     public string Scope { get; set; }
     public int Index { get; set; }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is not Symbol s)
+        {
+            return false;
+        }
+
+        return ToString().Equals(s.ToString());
+    }
+
+    public override string ToString()
+    {
+        return JsonSerializer.Serialize(this);
+    }
 }
 
 public class SymbolTable
 {
+    public SymbolTable? Outer { get; set; }
 
     private Dictionary<string, Symbol> _store;
-    private int _numDefinitions;
+    public int NumDefinitions { get; set; }
 
     public SymbolTable()
     {
         _store = new Dictionary<string, Symbol>();
-        _numDefinitions = 0;
+        NumDefinitions = 0;
     }
 
-    public (Symbol? result, bool ok) Resolve(string name)
+    public SymbolTable(SymbolTable symbolTable) : this()
     {
-        if (!_store.ContainsKey(name))
+        Outer = symbolTable;
+    }
+
+    public (Symbol?, bool) Resolve(string name)
+    {
+        if (!_store.ContainsKey(name) && Outer is not null)
         {
-            return (null, false);
+            var (obj, ok) = Outer.Resolve(name);
+            return (obj, ok);
         }
 
         return (_store[name], true);
@@ -35,9 +61,18 @@ public class SymbolTable
 
     public Symbol Define(string name)
     {
-        var symbol = new Symbol {Name = name, Index = _numDefinitions, Scope = SymbolScope.GlobalScope};
+        var symbol = new Symbol {Name = name, Index = NumDefinitions};
+        if (Outer == null)
+        {
+            symbol.Scope = SymbolScope.GlobalScope;
+        }
+        else
+        {
+            symbol.Scope = SymbolScope.LocalScope;
+        }
         _store[name] = symbol;
-        _numDefinitions++;
+        NumDefinitions++;
         return symbol;
     }
+    
 }

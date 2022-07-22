@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Monkey.Core.AST;
 using Monkey.Core.Code;
 using Monkey.Core.Compiler;
@@ -9,6 +10,485 @@ namespace Monkey.Test;
 
 public class CompilerTest
 {
+    [Test]
+    public void TestResolveNestedLocal()
+    {
+        var global = new SymbolTable();
+        global.Define("a");
+        global.Define("b");
+
+        var firstLocal = new SymbolTable(global);
+        firstLocal.Define("c");
+        firstLocal.Define("d");
+
+        var secondLocal = new SymbolTable(firstLocal);
+        secondLocal.Define("e");
+        secondLocal.Define("f");
+
+        var tests = new[]
+        {
+            new
+            {
+                Table = firstLocal,
+                ExpectedSymbols = new List<Symbol>
+                {
+                    new() {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0},
+                    new() {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1},
+                    new() {Name = "c", Scope = SymbolScope.LocalScope, Index = 0},
+                    new() {Name = "d", Scope = SymbolScope.LocalScope, Index = 1},
+                }
+            },
+            new
+            {
+                Table = secondLocal,
+                ExpectedSymbols = new List<Symbol>
+                {
+                    new() {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0},
+                    new() {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1},
+                    new() {Name = "e", Scope = SymbolScope.LocalScope, Index = 0},
+                    new() {Name = "f", Scope = SymbolScope.LocalScope, Index = 1},
+                }
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            foreach (var symbol in test.ExpectedSymbols)
+            {
+                var (result, ok) = test.Table.Resolve(symbol.Name);
+                if (!ok)
+                {
+                    Assert.Fail($"name {symbol.Name} is not resolvable");
+                    return;
+                }
+
+                if (!result.Equals(symbol))
+                {
+                    Assert.Fail($"expected {symbol.Name} to resolve to {symbol}, got {result}");
+                }
+
+            }
+        }
+    }
+    [Test]
+    public void TestResolveLocal()
+    {
+        var global = new SymbolTable();
+        global.Define("a");
+        global.Define("b");
+
+        var local = new SymbolTable(global);
+        local.Define("c");
+        local.Define("d");
+
+        var expected = new List<Symbol>
+        {
+            new() {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0},
+            new() {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1},
+            new() {Name = "c", Scope = SymbolScope.LocalScope, Index = 0},
+            new() {Name = "d", Scope = SymbolScope.LocalScope, Index = 1}
+        };
+
+        foreach (var symbol in expected)
+        {
+            var (result, ok) = local.Resolve(symbol.Name);
+            if (!ok)
+            {
+                Assert.Fail($"name {symbol.Name} is not resolvable");
+                return;
+            }
+
+            if (!result.Equals(symbol))
+            {
+                Assert.Fail($"expected {symbol.Name} to resolve to {symbol}, got {result}");
+            }
+        }
+    }
+    [Test]
+    public void TestLetStatementScopes()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = @"let num = 55; fn() { num }",
+                ExpectedConstants = new()
+                {
+                    55,
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpGetGlobal, new() {0}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions= new()
+                {
+                Code.Make(Opcode.OpConstant, new() {0}),
+                Code.Make(Opcode.OpSetGlobal, new() {0}),
+                Code.Make(Opcode.OpConstant, new() {1}),
+                Code.Make(Opcode.OpPop),
+                }
+            },
+            new()
+            {
+                Input = @"fn() { let num = 55; num }",
+                ExpectedConstants = new()
+                {
+                    55,
+                    new List<Instructions> 
+                    {
+                        Code.Make(Opcode.OpConstant, new() {0}),
+                        Code.Make(Opcode.OpSetLocal, new() {0}),
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpPop)
+
+                }
+            },
+            new()
+            {
+                Input = @"fn() { let a = 55; let b = 77; a + b }",
+                ExpectedConstants = new()
+                {
+                    55,
+                    77,
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {0}),
+                        Code.Make(Opcode.OpSetLocal, new() {0}),
+                        Code.Make(Opcode.OpConstant, new() {1}),
+                        Code.Make(Opcode.OpSetLocal, new() {1}),
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpGetLocal, new() {1}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
+    [Test]
+    public void TestFunctionCalls()
+    {
+        var tests = new List<CompilerTestCase>()
+        {
+            new()
+            {
+                Input = "fn() { 24 }();",
+                ExpectedConstants = new()
+                {
+                    24,
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {0}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpCall, new() {0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = @"let noArg = fn() { 24 };
+                            noArg();",
+                ExpectedConstants = new()
+                {
+                    24,
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {0}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpSetGlobal, new() {0}),
+                    Code.Make(Opcode.OpGetGlobal, new() {0}),
+                    Code.Make(Opcode.OpCall, new() {0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "let oneArg = fn(a) { }; oneArg(24);",
+                ExpectedConstants = new()
+                {
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpReturn)
+                    },
+                    24
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpSetGlobal, new() {0}),
+                    Code.Make(Opcode.OpGetGlobal, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpCall, new() {1}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "let manyArg = fn(a, b, c) { }; manyArg(24, 25, 26);",
+                ExpectedConstants = new()
+                {
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpReturn)
+                    },
+                    24,
+                    25,
+                    26
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpSetGlobal, new() {0}),
+                    Code.Make(Opcode.OpGetGlobal, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpConstant, new() {3}),
+                    Code.Make(Opcode.OpCall, new() {3}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "let oneArg = fn(a) { a }; oneArg(24);",
+                ExpectedConstants = new()
+                {
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpReturnValue)
+                    },
+                    24
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpSetGlobal, new() {0}),
+                    Code.Make(Opcode.OpGetGlobal, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpCall, new() {1}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "let manyArg = fn(a, b, c) { a; b; c }; manyArg(24, 25, 26)",
+                ExpectedConstants = new()
+                {
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpPop),
+                        Code.Make(Opcode.OpGetLocal, new() {1}),
+                        Code.Make(Opcode.OpPop),
+                        Code.Make(Opcode.OpGetLocal, new() {2}),
+                        Code.Make(Opcode.OpReturnValue)
+                    },
+                    24,
+                    25,
+                    26
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpSetGlobal, new() {0}),
+                    Code.Make(Opcode.OpGetGlobal, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpConstant, new() {3}),
+                    Code.Make(Opcode.OpCall, new() {3}),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
+    [Test]
+    public void TestFunctionsWithoutReturnValue()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = "fn() { }",
+                ExpectedConstants = new()
+                {
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpReturn)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
+    [Test]
+    public void TestCompilerScopes()
+    {
+        var compiler = new Compiler();
+        if (compiler.ScopeIndex != 0)
+        {
+            Assert.Fail($"ScopeIndex wrong. Got {compiler.ScopeIndex}, want {0}");
+        }
+        var globalSymbolTable = compiler.SymbolTable;
+
+        compiler.Emit(Opcode.OpMul);
+
+        compiler.EnterScope();
+        if (compiler.ScopeIndex != 1)
+        {
+            Assert.Fail($"ScopeIndex wrong. Got {compiler.ScopeIndex}, want {1}");
+        }
+
+        compiler.Emit(Opcode.OpSub);
+
+        if (compiler.Scopes[compiler.ScopeIndex].Instructions.Count != 1)
+        {
+            Assert.Fail($"instructions length wrong. got {compiler.Scopes[compiler.ScopeIndex].Instructions.Count}");
+        }
+
+        var last = compiler.Scopes[compiler.ScopeIndex].LastInstruction;
+        if (last.Opcode != Opcode.OpSub)
+        {
+            Assert.Fail($"LastInstruction.Opcode wrong. Got {last.Opcode}, Want {Opcode.OpSub}");
+        }
+
+        if (compiler.SymbolTable.Outer != globalSymbolTable)
+        {
+            Assert.Fail($"compiler did not enclose symbolTable");
+        }
+
+        compiler.LeaveScope();
+        if (compiler.ScopeIndex != 0)
+        {
+            Assert.Fail($"ScopeIndex wrong. Got {compiler.ScopeIndex}, want {0}");
+        }
+
+        if (compiler.SymbolTable != globalSymbolTable)
+        {
+            Assert.Fail($"compiler did not restore global symbol table");
+        }
+
+        if (compiler.SymbolTable.Outer != null)
+        {
+            Assert.Fail($"compiler modified global symbol table incorrectly");
+        }
+        compiler.Emit(Opcode.OpAdd);
+
+        if (compiler.Scopes[compiler.ScopeIndex].Instructions.Count != 2)
+        {
+            Assert.Fail($"instructions length wrong, got {compiler.Scopes[compiler.ScopeIndex].Instructions.Count}");
+        }
+
+        last = compiler.Scopes[compiler.ScopeIndex].LastInstruction;
+        if (last.Opcode != Opcode.OpAdd)
+        {
+            Assert.Fail($"LastInstruction.Opcode wrong. Got {last.Opcode}, Want {Opcode.OpAdd}");
+        }
+
+        var previous = compiler.Scopes[compiler.ScopeIndex].PreviousInstruction;
+        if (previous.Opcode != Opcode.OpMul)
+        {
+            
+            Assert.Fail($"PreviousInstruction.Opcode wrong. Got {previous.Opcode}, Want {Opcode.OpMul}");
+        }
+    }
+    [Test]
+    public void TestFunctions()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = "fn() { return 5 + 10; }",
+                ExpectedConstants = new()
+                {
+                    5, 10, new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {0}),
+                        Code.Make(Opcode.OpConstant, new() {1}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "fn() { 5 + 10 }",
+                ExpectedConstants = new()
+                {
+                    5, 10, new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {0}),
+                        Code.Make(Opcode.OpConstant, new() {1}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "fn() { 1; 2 }",
+                ExpectedConstants = new()
+                {
+                    1, 2, new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {0}),
+                        Code.Make(Opcode.OpPop),
+                        Code.Make(Opcode.OpConstant, new() {1}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+        };
+        
+        RunCompilerTests(tests);
+    }
     [Test]
     public void TestIndexExpressions()
     {
@@ -193,7 +673,11 @@ public class CompilerTest
         var expected = new Dictionary<string, Symbol>
         {
             {"a", new Symbol {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0}},
-            {"b", new Symbol {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1}}
+            {"b", new Symbol {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1}},
+            {"c", new Symbol {Name = "c", Scope = SymbolScope.LocalScope, Index = 0}},
+            {"d", new Symbol {Name = "d", Scope = SymbolScope.LocalScope, Index = 1}},
+            {"e", new Symbol {Name = "e", Scope = SymbolScope.LocalScope, Index = 0}},
+            {"f", new Symbol {Name = "f", Scope = SymbolScope.LocalScope, Index = 1}},
         };
 
         var global = new SymbolTable();
@@ -208,6 +692,34 @@ public class CompilerTest
         if (!b.Equals(expected["b"]))
         {
             Assert.Fail($"expected b={expected["b"]}, got={b}");
+        }
+
+        var firstLocal = new SymbolTable(global);
+
+        var c = firstLocal.Define("c");
+        if (!c.Equals(expected["c"]))
+        {
+            Assert.Fail($"expected c={expected["c"]}, got={c}");
+        }
+        
+        var d = firstLocal.Define("d");
+        if (!d.Equals(expected["d"]))
+        {
+            Assert.Fail($"expected d={expected["d"]}, got={d}");
+        }
+        
+        var secondLocal = new SymbolTable(firstLocal);
+
+        var e = secondLocal.Define("e");
+        if (!e.Equals(expected["e"]))
+        {
+            Assert.Fail($"expected e={expected["e"]}, got={e}");
+        }
+        
+        var f = secondLocal.Define("f");
+        if (!f.Equals(expected["f"]))
+        {
+            Assert.Fail($"expected f={expected["f"]}, got={f}");
         }
     }
 
@@ -534,6 +1046,8 @@ public class CompilerTest
     {
         foreach (var tt in tests)
         {
+
+            Console.WriteLine($"{JsonSerializer.Serialize(tt)}");
             var program = Parse(tt.Input);
 
             var compiler = new Compiler();
@@ -564,7 +1078,7 @@ public class CompilerTest
     {
         if (expected.Count != actual.Count)
         {
-            return $"wrong number of constants. Got '{actual.Count}'. Want '{expected.Count}'";
+            return $"wrong number of constants. Got '{JsonSerializer.Serialize(actual)}'. Want '{JsonSerializer.Serialize(expected)}'";
         }
 
         for (var i = 0; i < expected.Count; i++)
@@ -585,6 +1099,20 @@ public class CompilerTest
                 if (err is not null)
                 {
                     return $"constant {i} - TestStringObjectFailed: {err}";
+                }
+            }
+
+            if (constant is List<Instructions> list)
+            {
+                if (actual[i] is not CompiledFunction func)
+                {
+                    return $"constant {i} - not a function: {actual[i]}";
+                }
+
+                var err = TestInstructions(list, func.Instructions);
+                if (err is not null)
+                {
+                    return $"constant {i} - TestInstructions failed: {err}";
                 }
             }
         }

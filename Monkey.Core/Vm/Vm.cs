@@ -1,4 +1,5 @@
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using Monkey.Core.Code;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
@@ -12,26 +13,34 @@ public class Vm
 {
     private const int StackSize = 2048;
     private const int GlobalsSize = 65536;
+    private const int MaxFrames = 1024;
     
     private readonly Boolean TRUE = new() {Value = true};
     private readonly Boolean FALSE = new() {Value = false};
     public static readonly Null NULL = new Null();
     public List<Object.Object> Constants { get; set; }
-    public Instructions Instructions { get; set; }
     public Object.Object[] Stack { get; set; }
     public int sp { get; set; }
 
     private Object.Object[] Globals;
 
+    public Frame[] Frames { get; set; }
+    public int FramesIndex { get; set; }
+
     public Vm(Bytecode bytecode)
     {
-        Instructions = bytecode.Instructions;
+        var mainFn = new CompiledFunction {Instructions = bytecode.Instructions};
+        var mainFrame = new Frame(mainFn, 0);
         Constants = bytecode.Constants;
 
         Stack = new Object.Object[StackSize];
         sp = 0;
 
         Globals = new Object.Object[GlobalsSize];
+
+        Frames = new Frame[MaxFrames];
+        Frames[0] = mainFrame;
+        FramesIndex = 1;
     }
 
     public Vm(Bytecode bytecode, List<Object.Object> s) : this(bytecode)
@@ -41,9 +50,17 @@ public class Vm
 
     public string? Run()
     {
-        for (var ip = 0; ip < Instructions.Count; ip++)
+        int ip;
+        Instructions ins;
+        Opcode op;
+        
+        while(CurrentFrame().Ip < CurrentFrame().Instructions().Count-1)
         {
-            var op = (Opcode) Instructions[ip];
+            CurrentFrame().Ip++;
+            
+            ip = CurrentFrame().Ip;
+            ins = CurrentFrame().Instructions();
+            op = (Opcode) ins[ip];
 
             string? err = null;
             switch (op)
@@ -62,11 +79,11 @@ public class Vm
                    }
                     break;
                case Opcode.OpConstant:
-                   var bytes = Instructions.GetRange(ip+1, Instructions.Count-ip-1);
+                   var bytes = ins.GetRange(ip+1, ins.Count-ip-1);
                    var newInstr = new Instructions();
                    newInstr.AddRange(bytes);
                    var constIndex = Code.Code.ReadUint16(newInstr);
-                   ip += 2;
+                   CurrentFrame().Ip += 2;
                    err = Push(Constants[constIndex]);
                    if (err is not null)
                    {
@@ -114,21 +131,21 @@ public class Vm
                    break;
                case Opcode.OpJump:
                    var instr = new Instructions();
-                   instr.AddRange(Instructions.GetRange(ip+1, Instructions.Count-ip-1));
+                   instr.AddRange(ins.GetRange(ip+1, ins.Count-ip-1));
                    var position = (int) Code.Code.ReadUint16(instr);
-                   ip = position-1;
+                   CurrentFrame().Ip = position-1;
 
                    break;
                case Opcode.OpJumpNotTruthy:
                    var nInstr = new Instructions();
-                   nInstr.AddRange(Instructions.GetRange(ip+1, Instructions.Count-ip-1));
+                   nInstr.AddRange(ins.GetRange(ip+1, ins.Count-ip-1));
                    var pos = (int) Code.Code.ReadUint16(nInstr);
-                   ip += 2;
+                   CurrentFrame().Ip += 2;
                    
                    var condition = Pop();
                    if (!IsTruthy(condition))
                    {
-                       ip = pos - 1;
+                       CurrentFrame().Ip = pos - 1;
                    }
                    break;
                 case Opcode.OpNull:
@@ -141,19 +158,19 @@ public class Vm
                     break;
                 case Opcode.OpSetGlobal:
                     var inst = new Instructions();
-                    var list = Instructions.GetRange(ip + 1, Instructions.Count - ip - 1);
+                    var list = ins.GetRange(ip + 1, ins.Count - ip - 1);
                     inst.AddRange(list);
                     var globalIndex = Code.Code.ReadUint16(inst);
-                    ip += 2;
+                    CurrentFrame().Ip += 2;
 
                     Globals[globalIndex] = Pop();
                     break;
                 case Opcode.OpGetGlobal:
                     var instructs = new Instructions();
-                    var newlist = Instructions.GetRange(ip + 1, Instructions.Count - ip - 1);
+                    var newlist = ins.GetRange(ip + 1, ins.Count - ip - 1);
                     instructs.AddRange(newlist);
                     var glblIdx = Code.Code.ReadUint16(instructs);
-                    ip += 2;
+                    CurrentFrame().Ip += 2;
 
                     err = Push(Globals[glblIdx]);
                     if (err is not null)
@@ -162,11 +179,11 @@ public class Vm
                     }
                     break;
                 case Opcode.OpArray:
-                    newlist = Instructions.GetRange(ip + 1, Instructions.Count - ip - 1);
+                    newlist = ins.GetRange(ip + 1, ins.Count - ip - 1);
                     inst = new Instructions();
                     inst.AddRange(newlist);
                     var numElements = Code.Code.ReadUint16(inst);
-                    ip += 2;
+                    CurrentFrame().Ip += 2;
 
                     var array = BuildArray(sp - numElements, sp);
                     sp = sp - numElements;
@@ -178,11 +195,11 @@ public class Vm
                     }
                     break;
                 case Opcode.OpHash:
-                    newlist = Instructions.GetRange(ip + 1, Instructions.Count - ip - 1);
+                    newlist = ins.GetRange(ip + 1, ins.Count - ip - 1);
                     inst = new Instructions();
                     inst.AddRange(newlist);
                     numElements = Code.Code.ReadUint16(inst);
-                    ip += 2;
+                    CurrentFrame().Ip += 2;
 
                     var (hash, error) = BuildHash(sp - numElements, sp);
                     if (error is not null)
@@ -209,8 +226,93 @@ public class Vm
                         return err;
                     }
                     break;
+                case Opcode.OpCall:
+                    newlist = ins.GetRange(ip + 1, ins.Count - ip - 1);
+                    inst = new Instructions();
+                    // ReadUint8 hack
+                    inst.Add(newlist[0]);
+                    var numArgs = Code.Code.ReadUint16(inst);
+                    CurrentFrame().Ip += 1;
+
+                    err = CallFunction(numArgs);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+                    
+                    break;
+                case Opcode.OpReturnValue:
+                    var returnValue = Pop();
+
+                    var frame = PopFrame();
+                    sp = frame.BasePointer - 1;
+
+                    err = Push(returnValue);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+
+                    break;
+                case Opcode.OpReturn:
+                    frame = PopFrame();
+                    sp = frame.BasePointer - 1;
+
+                    err = Push(NULL);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+                    break;
+                case Opcode.OpSetLocal:
+                    newlist = ins.GetRange(ip + 1, ins.Count - ip - 1);
+                    inst = new Instructions();
+                    // ReadUint8 hack
+                    inst.Add(newlist[0]);
+                    var localIndex = Code.Code.ReadUint16(inst);
+                    CurrentFrame().Ip += 1;
+
+                    frame = CurrentFrame();
+
+                    Stack[frame.BasePointer + localIndex] = Pop();
+                    break;
+                case Opcode.OpGetLocal:
+                    newlist = ins.GetRange(ip + 1, ins.Count - ip - 1);
+                    inst = new Instructions();
+                    // ReadUint8 hack
+                    inst.Add(newlist[0]);
+                    localIndex = Code.Code.ReadUint16(inst);
+                    CurrentFrame().Ip += 1;
+
+                    frame = CurrentFrame();
+
+                    err = Push(Stack[frame.BasePointer + localIndex]);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+                    break;
             }
         }
+
+        return null;
+    }
+
+    private string? CallFunction(ushort numArgs)
+    {
+        if (Stack[sp - 1 - numArgs] is not CompiledFunction fn)
+        {
+            return $"calling non-function";
+        }
+
+        if (numArgs != fn.NumParameters)
+        {
+            return $"wrong number of arguments: want={fn.NumParameters}, got={numArgs}";
+        }
+
+        var frame = new Frame(fn, sp-numArgs);
+        PushFrame(frame);
+        sp = frame.BasePointer + fn.NumLocals;
 
         return null;
     }
@@ -489,5 +591,22 @@ public class Vm
         }
 
         return Stack[sp - 1];
+    }
+
+    private Frame CurrentFrame()
+    {
+        return Frames[FramesIndex - 1];
+    }
+
+    private void PushFrame(Frame f)
+    {
+        Frames[FramesIndex] = f;
+        FramesIndex++;
+    }
+
+    private Frame PopFrame()
+    {
+        FramesIndex--;
+        return Frames[FramesIndex];
     }
 }

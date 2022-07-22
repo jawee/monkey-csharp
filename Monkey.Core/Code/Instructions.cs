@@ -29,7 +29,10 @@ public class Instructions : List<byte>
             i += 1 + read;
         }
 
-        builder.Remove(builder.Length - 1, 1);
+        if (builder.Length > 1)
+        {
+            builder.Remove(builder.Length - 1, 1);
+        }
 
         return builder.ToString();
     }
