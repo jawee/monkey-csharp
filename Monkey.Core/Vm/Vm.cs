@@ -234,11 +234,12 @@ public class Vm
                     var numArgs = Code.Code.ReadUint16(inst);
                     CurrentFrame().Ip += 1;
 
-                    err = CallFunction(numArgs);
+                    err = ExecuteCall(numArgs);
                     if (err is not null)
                     {
                         return err;
                     }
+
                     
                     break;
                 case Opcode.OpReturnValue:
@@ -292,26 +293,78 @@ public class Vm
                         return err;
                     }
                     break;
+                case Opcode.OpGetBuiltin:
+                    newlist = ins.GetRange(ip + 1, ins.Count - ip - 1);
+                    inst = new Instructions();
+                    // ReadUint8 hack
+                    inst.Add(newlist[0]);
+                    var builtinIndex = Code.Code.ReadUint16(inst);
+                    CurrentFrame().Ip += 1;
+
+                    var builtins = new Builtins();
+                    var definition = builtins[builtinIndex];
+
+                    err = Push(definition.Builtin);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+                    
+                    break;
             }
         }
 
         return null;
     }
 
-    private string? CallFunction(ushort numArgs)
+    private string? ExecuteCall(ushort numArgs)
     {
-        if (Stack[sp - 1 - numArgs] is not CompiledFunction fn)
+        var callee = Stack[sp - 1 - numArgs];
+
+        if (callee is CompiledFunction cfn)
         {
-            return $"calling non-function";
+            return CallFunction(cfn, numArgs);
         }
 
+        if (callee is Builtin bfn)
+        {
+            return CallBuiltin(bfn, numArgs);
+        }
+
+        return $"calling non-function and non-built-in";
+    }
+
+    private string? CallBuiltin(Builtin builtin, ushort numArgs)
+    {
+        var idx = sp - numArgs;
+        var args = Stack[idx..sp].ToList();
+
+        var result = builtin.Fn(args);
+
+        sp = sp - numArgs - 1;
+
+        if (result != null)
+        {
+            Push(result);
+        }
+        else
+        {
+            Push(NULL);
+        }
+
+        return null;
+    }
+
+    private string? CallFunction(CompiledFunction fn, int numArgs)
+    {
         if (numArgs != fn.NumParameters)
         {
             return $"wrong number of arguments: want={fn.NumParameters}, got={numArgs}";
         }
 
-        var frame = new Frame(fn, sp-numArgs);
+        var frame = new Frame(fn, sp - numArgs);
         PushFrame(frame);
+
         sp = frame.BasePointer + fn.NumLocals;
 
         return null;

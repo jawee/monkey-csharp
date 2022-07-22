@@ -7,6 +7,7 @@ public class SymbolScope
 {
     public static string GlobalScope = "GLOBAL";
     public static string LocalScope = "LOCAL";
+    public static string BuiltinScope = "BUILTIN";
 }
 public struct Symbol
 {
@@ -72,6 +73,14 @@ public class SymbolTable
         }
         _store[name] = symbol;
         NumDefinitions++;
+        return symbol;
+    }
+
+    public Symbol DefineBuiltin(int index, string name)
+    {
+        var symbol = new Symbol {Name = name, Index = index, Scope = SymbolScope.BuiltinScope};
+        _store[name] = symbol;
+
         return symbol;
     }
     

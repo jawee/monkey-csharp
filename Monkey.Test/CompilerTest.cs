@@ -11,6 +11,90 @@ namespace Monkey.Test;
 public class CompilerTest
 {
     [Test]
+    public void TestDefineResolveBuiltins()
+    {
+        var global = new SymbolTable();
+        var firstLocal = new SymbolTable(global);
+        var secondLocal = new SymbolTable(firstLocal);
+
+        var expected = new List<Symbol>
+        {
+            new() {Name = "a", Scope = SymbolScope.BuiltinScope, Index = 0},
+            new() {Name = "c", Scope = SymbolScope.BuiltinScope, Index = 1},
+            new() {Name = "e", Scope = SymbolScope.BuiltinScope, Index = 2},
+            new() {Name = "f", Scope = SymbolScope.BuiltinScope, Index = 3},
+        };
+
+        for (var i = 0; i < expected.Count; i++)
+        {
+            var v = expected[i];
+            global.DefineBuiltin(i, v.Name);
+        }
+
+        foreach (var table in new List<SymbolTable> {global, firstLocal, secondLocal})
+        {
+            foreach (var sym in expected)
+            {
+                var (result, ok) = table.Resolve(sym.Name);
+                if (!ok)
+                {
+                    Assert.Fail($"name {sym.Name} is not resolvable");
+                    continue;
+                }
+
+                if (!result.Equals(sym))
+                {
+                    Assert.Fail($"expected {sym.Name} to resolve to {sym}, got={result}");
+                }
+            }
+        }
+    }
+    [Test]
+    public void TestBuiltins()
+    {
+        var tests = new List<CompilerTestCase>()
+        {
+            new()
+            {
+                Input = @"len([]); push([], 1);",
+                ExpectedConstants = new() { 1 },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpGetBuiltin, new() {0}),
+                    Code.Make(Opcode.OpArray, new() {0}),
+                    Code.Make(Opcode.OpCall, new() {1}),
+                    Code.Make(Opcode.OpPop),
+                    Code.Make(Opcode.OpGetBuiltin, new() {5}),
+                    Code.Make(Opcode.OpArray, new() {0}),
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpCall, new() {2}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = @"fn() { len([]) }",
+                ExpectedConstants = new()
+                {
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpGetBuiltin, new() {0}),
+                        Code.Make(Opcode.OpArray, new() {0}),
+                        Code.Make(Opcode.OpCall, new() {1}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
+    [Test]
     public void TestResolveNestedLocal()
     {
         var global = new SymbolTable();
@@ -1046,7 +1130,6 @@ public class CompilerTest
     {
         foreach (var tt in tests)
         {
-
             Console.WriteLine($"{JsonSerializer.Serialize(tt)}");
             var program = Parse(tt.Input);
 

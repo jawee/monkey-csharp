@@ -29,6 +29,13 @@ public class Compiler
         
         SymbolTable = new SymbolTable();
 
+        var builtins = new Builtins();
+        for(var i = 0; i < builtins.Count; i++)
+        {
+            var k = builtins[i];
+            SymbolTable.DefineBuiltin(i, k.Name);
+        }
+
         var mainScope = new CompilationScope
         {
             Instructions = _instructions,
@@ -157,15 +164,8 @@ public class Compiler
             {
                 return $"undefined variable {ident.Value}";
             }
-
-            if (symbol.Value.Scope.Equals(SymbolScope.GlobalScope))
-            {
-                Emit(Opcode.OpGetGlobal, new List<int> {symbol.Value.Index});
-            }
-            else
-            {
-                Emit(Opcode.OpGetLocal, new() {symbol.Value.Index});
-            }
+            
+            LoadSymbol(symbol.Value);
         }
 
         if (node is InfixExpression infExpr)
@@ -406,6 +406,26 @@ public class Compiler
         ReplaceInstructions(lastPos.Value, Code.Code.Make(Opcode.OpReturnValue));
 
         Scopes[ScopeIndex].LastInstruction.Opcode = Opcode.OpReturnValue;
+    }
+
+    private void LoadSymbol(Symbol s)
+    {
+        if (s.Scope.Equals(SymbolScope.GlobalScope))
+        {
+            Emit(Opcode.OpGetGlobal, new() {s.Index});
+            return;
+        }
+
+        if (s.Scope.Equals(SymbolScope.LocalScope))
+        {
+            Emit(Opcode.OpGetLocal, new() {s.Index});
+            return;
+        }
+
+        if (s.Scope.Equals(SymbolScope.BuiltinScope))
+        {
+            Emit(Opcode.OpGetBuiltin, new() {s.Index});
+        }
     }
 
     private void RemoveLastPop()

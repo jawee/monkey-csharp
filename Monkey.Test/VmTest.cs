@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Monkey.Core.AST;
 using Monkey.Core.Compiler;
 using Monkey.Core.Object;
@@ -11,6 +12,105 @@ namespace Monkey.Test;
 
 public class VmTest
 {
+    [Test]
+    public void TestBuiltinFunctions()
+    {
+        var tests = new VmTestCase[]
+        {
+            new()
+            {
+                Input = @"len("""")",
+                Expected = 0
+            },
+            new()
+            {
+                Input = @"len(""four"")",
+                Expected = 4
+            },
+            new()
+            {
+                Input = @"len(""hello world"")",
+                Expected = 11
+            },
+            new()
+            {
+                Input = @"len(1)",
+                Expected = new Error {Message = @"argument to 'len' not supported, got INTEGER"}
+            },
+            new()
+            {
+                Input = @"len(""one"", ""two"")",
+                Expected = new Error {Message = @"wrong number of arguments. got=2, want=1"}
+            },
+            new()
+            {
+                Input = @"len([1, 2, 3])",
+                Expected = 3
+            },
+            new()
+            {
+                Input = @"len([])",
+                Expected = 0
+            },
+            new()
+            {
+                Input = @"puts(""hello"", ""world"")",
+                Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = @"first([1, 2, 3])",
+                Expected = 1
+            },
+            new()
+            {
+                Input = @"first([])",
+                Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = @"first(1)",
+                Expected = new Error {Message = "argument to 'first' must be ARRAY, got INTEGER"}
+            },
+            new()
+            {
+                Input = @"last([1, 2, 3])",
+                Expected = 3
+            },
+            new()
+            {
+                Input = @"last([])",
+                Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = @"last(1)",
+                Expected = new Error {Message = "argument to 'last' must be ARRAY, got INTEGER"}
+            },
+            new()
+            {
+                Input = @"rest([1, 2, 3])",
+                Expected = new[] {2, 3},
+            },
+            new()
+            {
+                Input = @"rest([])",
+                Expected = Vm.NULL
+            },
+            new()
+            {
+                Input = @"push([], 1)",
+                Expected = new[] {1}
+            },
+            new()
+            {
+                Input = @"push(1, 1)",
+                Expected = new Error {Message = "argument to 'push' must be ARRAY, got INTEGER"}
+            }
+        };
+        
+        RunVmTests(tests);
+    }
     [Test]
     public void TestCallingFunctionsWithWrongArguments()
     {
@@ -756,6 +856,20 @@ public class VmTest
                 {
                     Assert.Fail($"TestIntegerObject failed: {err}");
                 }
+            }
+        }
+
+        if (expected is Error error)
+        {
+            if (actual is not Error actualErr)
+            {
+                Assert.Fail($"object is not Error: {actual}");
+                return;
+            }
+
+            if (!error.Message.Equals(actualErr.Message))
+            {
+                Assert.Fail($"wrong error message. expected={error.Message}, got={actualErr.Message}");
             }
         }
     }

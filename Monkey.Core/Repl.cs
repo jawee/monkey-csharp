@@ -14,6 +14,12 @@ public class Repl {
 
         var globals = new List<Object.Object>();
         var symbolTable = new SymbolTable();
+        var builtins = new Builtins();
+        for (var i = 0; i < builtins.Count; i++)
+        {
+            var v = builtins[i];
+            symbolTable.DefineBuiltin(i, v.Name);
+        }
 
         while (true) {
             Console.Write(PROMPT);

@@ -9,134 +9,18 @@ namespace Monkey.Core;
 
 public class Evaluator
 {
+    private static readonly Builtins Builtins = new ();
 
-    private static Dictionary<string, Object.Object> _builtins = new()
+    private static readonly Dictionary<string, Builtin?> _builtins = new()
     {
-        {"len", new Builtin { Fn = LenFunc }},
-        {"first", new Builtin { Fn = FirstFunc}},
-        {"last", new Builtin { Fn = LastFunc}},
-        {"rest", new Builtin { Fn = RestFunc}},
-        {"push", new Builtin { Fn = PushFunc}},
-        {"puts", new Builtin { Fn = PutsFunc}}
+        {"len", Builtins.GetBuiltinByName("len")},
+        {"first", Builtins.GetBuiltinByName("first")},
+        {"last", Builtins.GetBuiltinByName("last")},
+        {"rest", Builtins.GetBuiltinByName("rest")},
+        {"push", Builtins.GetBuiltinByName("push")},
+        {"puts", Builtins.GetBuiltinByName("puts")}
     };
 
-    private static Object.Object PutsFunc(List<Object.Object> args)
-    {
-        foreach (var arg in args)
-        {
-           Console.WriteLine(arg.Inspect()); 
-        }
-
-        return new Null();
-    }
-
-    private static Object.Object PushFunc(List<Object.Object> args)
-    {
-        
-        if (args.Count != 2)
-        {
-            return NewError($"wrong number of arguments. got={args.Count}, want=2");
-        }
-
-        if (args[0].Type() != ObjectType.ARRAY_OBJ)
-        {
-            return NewError($"argument to 'last' must be ARRAY, got {args[0].Type()}");
-        }
-
-        var arr = args[0] as Array;
-        var length = arr.Elements.Count;
-        var newElements = new List<Object.Object>();
-        newElements.AddRange(arr.Elements);
-        newElements.Add(args[1]);
-        return new Array {Elements = newElements};
-    }
-
-    private static Object.Object RestFunc(List<Object.Object> args)
-    {
-        if (args.Count != 1)
-        {
-            return NewError($"wrong number of arguments. got={args.Count}, want=1");
-        }
-
-        if (args[0].Type() != ObjectType.ARRAY_OBJ)
-        {
-            return NewError($"argument to 'last' must be ARRAY, got {args[0].Type()}");
-        }
-
-        var arr = args[0] as Array;
-        var length = arr.Elements.Count;
-        if (length > 0)
-        {
-            var newList = new List<Object.Object>();
-            newList.AddRange(arr.Elements.GetRange(1, length-1));
-            return new Array {Elements = newList};
-        }
-
-        return new Null();
-    }
-
-    private static Object.Object LastFunc(List<Object.Object> args)
-    {
-        if (args.Count != 1)
-        {
-            return NewError($"wrong number of arguments. got={args.Count}, want=1");
-        }
-
-        if (args[0].Type() != ObjectType.ARRAY_OBJ)
-        {
-            return NewError($"argument to 'last' must be ARRAY, got {args[0].Type()}");
-        }
-
-        var arr = args[0] as Array;
-        var length = arr.Elements.Count;
-        if (length > 0)
-        {
-            return arr.Elements[length - 1];
-        }
-
-        return new Null();
-    }
-
-    private static Object.Object FirstFunc(List<Object.Object> args)
-    {
-        if (args.Count != 1)
-        {
-            return NewError($"wrong number of arguments. got={args.Count}, want=1");
-        }
-
-        if (args[0].Type() != ObjectType.ARRAY_OBJ)
-        {
-            return NewError($"argument to 'first' must be ARRAY, got {args[0].Type()}");
-        }
-
-        var arr = args[0] as Array;
-        if (arr.Elements.Count > 0)
-        {
-            return arr.Elements[0];
-        }
-
-        return new Null();
-    }
-
-    private static Object.Object LenFunc(List<Object.Object> args)
-    {
-        if (args.Count != 1)
-        {
-            return NewError($"wrong number of arguments. got={args.Count}, want=1");
-        }
-
-        var arg = args[0];
-        if (arg is String str)
-        {
-            return new Integer {Value = str.Value.Length};
-        }
-
-        if (arg is Array arr)
-        {
-            return new Integer {Value = arr.Elements.Count};
-        }
-        return NewError($"argument to 'len' not supported, got {arg.Type()}");
-    }
 
 
     public static Object.Object Eval(Node node, Environment env)
@@ -377,7 +261,13 @@ public class Evaluator
 
         if (function is Builtin bn)
         {
-            return bn.Fn(args);
+            var res = bn.Fn?.Invoke(args);
+            if (res != null)
+            {
+                return res;
+            }
+
+            return new Null();
         }
 
         return NewError($"not a function: {function.Type()}");
