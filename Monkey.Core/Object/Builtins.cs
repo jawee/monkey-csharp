@@ -45,7 +45,6 @@ public class Builtins : List<BuiltinsObj>
         }
 
         var arr = args[0] as Array;
-        var length = arr.Elements.Count;
         var newElements = new List<Object>();
         newElements.AddRange(arr.Elements);
         newElements.Add(args[1]);
@@ -64,7 +63,10 @@ public class Builtins : List<BuiltinsObj>
             return NewError($"argument to 'last' must be ARRAY, got {args[0].Type()}");
         }
 
-        var arr = args[0] as Array;
+        if (args[0] is not Array arr)
+        {
+            return new Null();
+        }
         var length = arr.Elements.Count;
         if (length > 0)
         {
@@ -88,7 +90,10 @@ public class Builtins : List<BuiltinsObj>
             return NewError($"argument to 'last' must be ARRAY, got {args[0].Type()}");
         }
 
-        var arr = args[0] as Array;
+        if (args[0] is not Array arr)
+        {
+            return new Null();
+        }
         var length = arr.Elements.Count;
         if (length > 0)
         {
@@ -110,7 +115,10 @@ public class Builtins : List<BuiltinsObj>
             return NewError($"argument to 'first' must be ARRAY, got {args[0].Type()}");
         }
 
-        var arr = args[0] as Array;
+        if (args[0] is not Array arr)
+        {
+            return new Null();
+        }
         if (arr.Elements.Count > 0)
         {
             return arr.Elements[0];

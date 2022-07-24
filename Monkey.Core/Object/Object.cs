@@ -13,6 +13,7 @@ public static class ObjectType
     public static string ARRAY_OBJ = "ARRAY";
     public static string HASH_OBJ = "HASH";
     public static string COMPILED_FUNCTION_OBJ = "COMPILED_FUNCTION_OBJ";
+    public static string CLOSURE_OBJ = "CLOSURE";
 }
 
 public abstract class Object

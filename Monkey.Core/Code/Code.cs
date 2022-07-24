@@ -31,7 +31,8 @@ public enum Opcode : byte
     OpReturn,
     OpGetLocal,
     OpSetLocal,
-    OpGetBuiltin
+    OpGetBuiltin,
+    OpClosure
 }
 
 public class Code
@@ -65,6 +66,7 @@ public class Code
         {Opcode.OpGetLocal, new Definition { Name = "OpGetLocal", OperandWidths = new List<int> {1}}},
         {Opcode.OpSetLocal, new Definition { Name = "OpSetLocal", OperandWidths = new List<int> {1}}},
         {Opcode.OpGetBuiltin, new Definition { Name = "OpGetBuiltin", OperandWidths = new List<int> {1}}},
+        {Opcode.OpClosure, new Definition { Name = "OpClosure", OperandWidths = new List<int> {2, 1}}},
     };
 
     public static (Definition?, string?) Lookup(Opcode op)

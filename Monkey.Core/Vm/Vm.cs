@@ -30,7 +30,8 @@ public class Vm
     public Vm(Bytecode bytecode)
     {
         var mainFn = new CompiledFunction {Instructions = bytecode.Instructions};
-        var mainFrame = new Frame(mainFn, 0);
+        var mainClosure = new Closure {Fn = mainFn};
+        var mainFrame = new Frame(mainClosure, 0);
         Constants = bytecode.Constants;
 
         Stack = new Object.Object[StackSize];
@@ -311,19 +312,53 @@ public class Vm
                     }
                     
                     break;
+                case Opcode.OpClosure:
+                    newlist = ins.GetRange(ip + 1, ins.Count - ip - 1);
+                    inst = new Instructions();
+                    inst.AddRange(newlist);
+                    constIndex = Code.Code.ReadUint16(inst);
+
+                    newlist = ins.GetRange(ip + 3, ins.Count - ip - 3);
+                    inst = new Instructions();
+                    inst.Add(newlist[0]);
+                    //read uint8 hack
+                    Code.Code.ReadUint16(inst);
+                    
+                    CurrentFrame().Ip += 3;
+
+                    err = PushClosure(constIndex);
+                    if (err is not null)
+                    {
+                        return err;
+                    }
+                    
+                    break;
+                    
             }
         }
 
         return null;
     }
 
+    private string? PushClosure(int constIndex)
+    {
+        var constant = Constants[constIndex];
+        if (constant is not CompiledFunction cfn)
+        {
+            return $"not a function: {constant}";
+        }
+
+        var closure = new Closure {Fn = cfn};
+        return Push(closure);
+    }
+
     private string? ExecuteCall(ushort numArgs)
     {
         var callee = Stack[sp - 1 - numArgs];
 
-        if (callee is CompiledFunction cfn)
+        if (callee is Closure cl)
         {
-            return CallFunction(cfn, numArgs);
+            return CallClosure(cl, numArgs);
         }
 
         if (callee is Builtin bfn)
@@ -332,6 +367,21 @@ public class Vm
         }
 
         return $"calling non-function and non-built-in";
+    }
+
+    private string? CallClosure(Closure cl, ushort numArgs)
+    {
+        if (numArgs != cl.Fn.NumParameters)
+        {
+            return $"wrong number of arguments: want={cl.Fn.NumParameters}, got={numArgs}";
+        }
+
+        var frame = new Frame(cl, sp - numArgs);
+        PushFrame(frame);
+
+        sp = frame.BasePointer + cl.Fn.NumLocals;
+
+        return null;
     }
 
     private string? CallBuiltin(Builtin builtin, ushort numArgs)
@@ -351,21 +401,6 @@ public class Vm
         {
             Push(NULL);
         }
-
-        return null;
-    }
-
-    private string? CallFunction(CompiledFunction fn, int numArgs)
-    {
-        if (numArgs != fn.NumParameters)
-        {
-            return $"wrong number of arguments: want={fn.NumParameters}, got={numArgs}";
-        }
-
-        var frame = new Frame(fn, sp - numArgs);
-        PushFrame(frame);
-
-        sp = frame.BasePointer + fn.NumLocals;
 
         return null;
     }

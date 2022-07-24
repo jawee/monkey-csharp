@@ -363,7 +363,8 @@ public class Compiler
             var instructions = LeaveScope();
 
             var compiledFn = new CompiledFunction {Instructions = instructions, NumLocals = numLocals, NumParameters = func.Parameters.Count};
-            Emit(Opcode.OpConstant, new() {AddConstant(compiledFn)});
+            var fnIndex = AddConstant(compiledFn);
+            Emit(Opcode.OpClosure, new() {fnIndex, 0});
         }
 
         if (node is ReturnStatement ret)

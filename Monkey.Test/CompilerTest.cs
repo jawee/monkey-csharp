@@ -86,7 +86,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpClosure, new() {0,0}),
                     Code.Make(Opcode.OpPop)
                 }
             }
@@ -209,7 +209,7 @@ public class CompilerTest
                 {
                 Code.Make(Opcode.OpConstant, new() {0}),
                 Code.Make(Opcode.OpSetGlobal, new() {0}),
-                Code.Make(Opcode.OpConstant, new() {1}),
+                Code.Make(Opcode.OpClosure, new() {1, 0}),
                 Code.Make(Opcode.OpPop),
                 }
             },
@@ -229,7 +229,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpClosure, new() {1,0}),
                     Code.Make(Opcode.OpPop)
 
                 }
@@ -255,7 +255,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpClosure, new() {2,0}),
                     Code.Make(Opcode.OpPop)
                 }
             }
@@ -282,7 +282,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpClosure, new() {1, 0}),
                     Code.Make(Opcode.OpCall, new() {0}),
                     Code.Make(Opcode.OpPop)
                 }
@@ -302,7 +302,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {1}),
+                    Code.Make(Opcode.OpClosure, new() {1,0}),
                     Code.Make(Opcode.OpSetGlobal, new() {0}),
                     Code.Make(Opcode.OpGetGlobal, new() {0}),
                     Code.Make(Opcode.OpCall, new() {0}),
@@ -322,7 +322,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpClosure, new() {0,0}),
                     Code.Make(Opcode.OpSetGlobal, new() {0}),
                     Code.Make(Opcode.OpGetGlobal, new() {0}),
                     Code.Make(Opcode.OpConstant, new() {1}),
@@ -345,7 +345,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpClosure, new() {0,0}),
                     Code.Make(Opcode.OpSetGlobal, new() {0}),
                     Code.Make(Opcode.OpGetGlobal, new() {0}),
                     Code.Make(Opcode.OpConstant, new() {1}),
@@ -369,7 +369,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpClosure, new() {0,0}),
                     Code.Make(Opcode.OpSetGlobal, new() {0}),
                     Code.Make(Opcode.OpGetGlobal, new() {0}),
                     Code.Make(Opcode.OpConstant, new() {1}),
@@ -397,7 +397,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpClosure, new() {0,0}),
                     Code.Make(Opcode.OpSetGlobal, new() {0}),
                     Code.Make(Opcode.OpGetGlobal, new() {0}),
                     Code.Make(Opcode.OpConstant, new() {1}),
@@ -428,7 +428,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpClosure, new() {0, 0}),
                     Code.Make(Opcode.OpPop)
                 }
             }
@@ -527,7 +527,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpClosure, new() {2,0}),
                     Code.Make(Opcode.OpPop)
                 }
             },
@@ -546,7 +546,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpClosure, new() {2, 0}),
                     Code.Make(Opcode.OpPop)
                 }
             },
@@ -565,7 +565,7 @@ public class CompilerTest
                 },
                 ExpectedInstructions = new()
                 {
-                    Code.Make(Opcode.OpConstant, new() {2}),
+                    Code.Make(Opcode.OpClosure, new() {2, 0}),
                     Code.Make(Opcode.OpPop)
                 }
             },

@@ -5,20 +5,20 @@ namespace Monkey.Core.Vm;
 
 public class Frame
 {
-    public CompiledFunction Fn { get; set; }
+    public Closure Cl { get; set; }
     public int Ip { get; set; }
     public int BasePointer { get; set; }
 
-    public Frame(CompiledFunction fn, int basePointer)
+    public Frame(Closure cl, int basePointer)
     {
-        Fn = fn;
+        Cl = cl;
         Ip = -1;
         BasePointer = basePointer;
     }
 
     public Instructions Instructions()
     {
-        return Fn.Instructions;
+        return Cl.Fn.Instructions;
     }
     
 }

@@ -52,6 +52,8 @@ public class Instructions : List<byte>
                 return def.Name;
             case 1:
                 return $"{def.Name} {operands[0]}";
+            case 2:
+                return $"{def.Name} {operands[0]} {operands[1]}";
         }
 
         return $"ERROR: unhandled operandCount for {def.Name}";
