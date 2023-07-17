@@ -1,3 +1,4 @@
+using System.Security.AccessControl;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -8,6 +9,7 @@ public class SymbolScope
     public static string GlobalScope = "GLOBAL";
     public static string LocalScope = "LOCAL";
     public static string BuiltinScope = "BUILTIN";
+    public static string FreeScope = "FREE";
 }
 public struct Symbol
 {
@@ -37,10 +39,12 @@ public class SymbolTable
 
     private Dictionary<string, Symbol> _store;
     public int NumDefinitions { get; set; }
+    public List<Symbol> FreeSymbols { get; set; }
 
     public SymbolTable()
     {
         _store = new Dictionary<string, Symbol>();
+        FreeSymbols = new List<Symbol>();
         NumDefinitions = 0;
     }
 
@@ -51,13 +55,42 @@ public class SymbolTable
 
     public (Symbol?, bool) Resolve(string name)
     {
-        if (!_store.ContainsKey(name) && Outer is not null)
+        if (_store.ContainsKey(name))
+        {
+            return (_store[name], true);
+        }
+        
+        if (Outer is not null)
         {
             var (obj, ok) = Outer.Resolve(name);
-            return (obj, ok);
+            if (!ok)
+            {
+                return (obj, ok);
+            }
+
+            if (obj.Value.Scope.Equals(SymbolScope.GlobalScope) || obj.Value.Scope.Equals(SymbolScope.BuiltinScope))
+            {
+                return (obj, ok);
+            }
+
+            var free = DefineFree(obj.Value);
+            return (free, true);
         }
 
-        return (_store[name], true);
+        return (null, false);
+
+    }
+
+    private Symbol DefineFree(Symbol original)
+    {
+        FreeSymbols.Add(original);
+
+        var symbol = new Symbol {Name = original.Name, Index = FreeSymbols.Count - 1};
+        symbol.Scope = SymbolScope.FreeScope;
+
+        _store[original.Name] = symbol;
+
+        return symbol;
     }
 
     public Symbol Define(string name)

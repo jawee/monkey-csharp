@@ -153,7 +153,7 @@ public class Compiler
             }
             else
             {
-                Emit(Opcode.OpSetLocal, new() {symbol.Index});
+                Emit(Opcode.OpSetLocal, new List<int> {symbol.Index});
             }
         }
 
@@ -359,12 +359,17 @@ public class Compiler
                 Emit(Opcode.OpReturn);
             }
 
+            var freeSymbols = SymbolTable.FreeSymbols;
             var numLocals = SymbolTable.NumDefinitions;
             var instructions = LeaveScope();
 
+            foreach (var s in freeSymbols)
+            {
+                LoadSymbol(s);
+            }
             var compiledFn = new CompiledFunction {Instructions = instructions, NumLocals = numLocals, NumParameters = func.Parameters.Count};
             var fnIndex = AddConstant(compiledFn);
-            Emit(Opcode.OpClosure, new() {fnIndex, 0});
+            Emit(Opcode.OpClosure, new() {fnIndex, freeSymbols.Count});
         }
 
         if (node is ReturnStatement ret)
@@ -426,6 +431,11 @@ public class Compiler
         if (s.Scope.Equals(SymbolScope.BuiltinScope))
         {
             Emit(Opcode.OpGetBuiltin, new() {s.Index});
+        }
+
+        if (s.Scope.Equals(SymbolScope.FreeScope))
+        {
+            Emit(Opcode.OpGetFree, new() {s.Index});
         }
     }
 

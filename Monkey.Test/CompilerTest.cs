@@ -11,6 +11,255 @@ namespace Monkey.Test;
 public class CompilerTest
 {
     [Test]
+    public void TestResolveFree()
+    {
+        var global = new SymbolTable();
+        global.Define("a");
+        global.Define("b");
+
+        var firstLocal = new SymbolTable(global);
+        firstLocal.Define("c");
+        firstLocal.Define("d");
+
+        var secondLocal = new SymbolTable(firstLocal);
+        secondLocal.Define("e");
+        secondLocal.Define("f");
+
+        var tests = new[]
+        {
+            new
+            {
+                Table = firstLocal,
+                ExpectedSymbols = new List<Symbol>
+                {
+                    new Symbol {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0},
+                    new Symbol {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1},
+                    new Symbol {Name = "c", Scope = SymbolScope.LocalScope, Index = 0},
+                    new Symbol {Name = "d", Scope = SymbolScope.LocalScope, Index = 1},
+                },
+                ExpectedFreeSymbols = new List<Symbol>()
+            },
+            new
+            {
+                Table = secondLocal,
+                ExpectedSymbols = new List<Symbol>
+                {
+                    new Symbol {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0},
+                    new Symbol {Name = "b", Scope = SymbolScope.GlobalScope, Index = 1},
+                    new Symbol {Name = "c", Scope = SymbolScope.FreeScope, Index = 0},
+                    new Symbol {Name = "d", Scope = SymbolScope.FreeScope, Index = 1},
+                    new Symbol {Name = "e", Scope = SymbolScope.LocalScope, Index = 0},
+                    new Symbol {Name = "f", Scope = SymbolScope.LocalScope, Index = 1},
+                },
+                ExpectedFreeSymbols = new List<Symbol>
+                {
+                    new Symbol {Name = "c", Scope = SymbolScope.LocalScope, Index = 0},
+                    new Symbol {Name = "d", Scope = SymbolScope.LocalScope, Index = 1},
+                }
+            }
+        };
+
+        foreach (var test in tests)
+        {
+            foreach (var sym in test.ExpectedSymbols)
+            {
+                var (result, ok) = test.Table.Resolve(sym.Name);
+                if (!ok)
+                {
+                    Assert.Fail($"name {sym.Name} not resolvable");
+                }
+
+                if (!result.Equals(sym))
+                {
+                    Assert.Fail($"expected {sym.Name} to resolve to {sym} got {result}");
+                }
+            }
+
+            if (test.Table.FreeSymbols.Count != test.ExpectedFreeSymbols.Count)
+            {
+                Assert.Fail($"Wrong number of free symbols. got={test.Table.FreeSymbols.Count}, want={test.ExpectedFreeSymbols.Count}");
+            }
+
+            for (var i = 0; i < test.ExpectedFreeSymbols.Count; i++)
+            {
+                var sym = test.ExpectedFreeSymbols[i];
+                var result = test.Table.FreeSymbols[i];
+                if (!result.Equals(sym))
+                {
+                    Assert.Fail($"wrong free symbol. got={result}, want={sym}");
+                }
+            }
+            
+        }
+    }
+
+    [Test]
+    public void TestResolveUnresolvableFree()
+    {
+        var global = new SymbolTable();
+        global.Define("a");
+
+        var firstLocal = new SymbolTable(global);
+        firstLocal.Define("c");
+
+        var secondLocal = new SymbolTable(firstLocal);
+        secondLocal.Define("e");
+        secondLocal.Define("f");
+
+        var expected = new List<Symbol>
+        {
+            new Symbol {Name = "a", Scope = SymbolScope.GlobalScope, Index = 0},
+            new Symbol {Name = "c", Scope = SymbolScope.FreeScope, Index = 0},
+            new Symbol {Name = "e", Scope = SymbolScope.LocalScope, Index = 0},
+            new Symbol {Name = "f", Scope = SymbolScope.LocalScope, Index = 1},
+        };
+
+        foreach (var sym in expected)
+        {
+            var (result, ok) = secondLocal.Resolve(sym.Name);
+            if (!ok)
+            {
+                Assert.Fail($"name {sym.Name} not resolvable");
+            }
+
+            if (!result.Equals(sym))
+            {
+                Assert.Fail($"expected {sym.Name} to resolve to {sym}, got {result}");
+            }
+        }
+
+        var expectedUnresolvable = new List<string>
+        {
+            "b",
+            "d"
+        };
+
+        foreach (var name in expectedUnresolvable)
+        {
+            var (_, ok) = secondLocal.Resolve(name);
+            if (ok)
+            {
+                Assert.Fail($"name {name} resolved, but was expected not to");
+            }
+        }
+    }
+    [Test]
+    public void TestClosures()
+    {
+        var tests = new List<CompilerTestCase>
+        {
+            new()
+            {
+                Input = "fn(a) { fn(b) { a + b } }",
+                ExpectedConstants = new()
+                {
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpGetFree, new() {0}),
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make(Opcode.OpReturnValue)
+                    },
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpClosure, new() {0, 1}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpClosure, new() {1, 0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "fn(a) { fn(b) { fn(c) { a + b + c } } };",
+                ExpectedConstants = new ()
+                {
+                    new List<Instructions> {
+                        Code.Make(Opcode.OpGetFree, new() {0}),
+                        Code.Make(Opcode.OpGetFree, new () {1}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make((Opcode.OpReturnValue))
+                    },
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpGetFree, new() {0}),
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpClosure, new() {0, 2}),
+                        Code.Make(Opcode.OpReturnValue)
+                    },
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpClosure, new() {1, 1}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                },
+                ExpectedInstructions = new()
+                {
+                    Code.Make(Opcode.OpClosure, new() {2, 0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            },
+            new()
+            {
+                Input = "let global = 55; fn() { let a = 66; fn() { let b = 77; fn(() { let c = 88; global + a + b + c } } }",
+                ExpectedConstants = new()
+                {
+                    55,
+                    66,
+                    77,
+                    88,
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {3}),
+                        Code.Make(Opcode.OpSetLocal, new() {0}),
+                        Code.Make(Opcode.OpGetGlobal, new() {0}),
+                        Code.Make(Opcode.OpGetFree, new() {0}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make(Opcode.OpGetFree, new() {1}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpAdd),
+                        Code.Make(Opcode.OpReturnValue)
+                    },
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {2}),
+                        Code.Make(Opcode.OpSetLocal, new() {0}),
+                        Code.Make(Opcode.OpGetFree, new() {0}),
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpClosure, new() {4, 2}),
+                        Code.Make(Opcode.OpReturnValue)
+                    },
+                    new List<Instructions>
+                    {
+                        Code.Make(Opcode.OpConstant, new() {1}),
+                        Code.Make(Opcode.OpSetLocal, new() {0}),
+                        Code.Make(Opcode.OpGetLocal, new() {0}),
+                        Code.Make(Opcode.OpClosure, new() {5, 1}),
+                        Code.Make(Opcode.OpReturnValue)
+                    }
+                    
+                },
+                ExpectedInstructions = new List<Instructions>
+                {
+                    Code.Make(Opcode.OpConstant, new() {0}),
+                    Code.Make(Opcode.OpSetGlobal, new() {0}),
+                    Code.Make(Opcode.OpClosure, new() {6, 0}),
+                    Code.Make(Opcode.OpPop)
+                }
+            }
+        };
+        
+        RunCompilerTests(tests);
+    }
+    [Test]
     public void TestDefineResolveBuiltins()
     {
         var global = new SymbolTable();
